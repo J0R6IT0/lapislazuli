@@ -6,6 +6,12 @@ pub struct Separator {
     vertical: bool,
 }
 
+impl Default for Separator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Separator {
     pub fn new() -> Self {
         Self {

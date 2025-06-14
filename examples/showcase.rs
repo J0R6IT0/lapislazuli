@@ -11,7 +11,7 @@ struct Showcase {
 
 impl Showcase {
     fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
-        app.new(|cx| Self {
+        app.new(|_cx| Self {
             progress_value: 50.0,
         })
     }
