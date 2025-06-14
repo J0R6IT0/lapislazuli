@@ -16,6 +16,7 @@ impl Showcase {
 impl Render for Showcase {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
+            .p(rems(2.0))
             .gap(rems(1.0))
             .child(
                 button("button1")
@@ -25,7 +26,8 @@ impl Render for Showcase {
                     .child(span("Button 1").text_color(rgb(0x0000FF)))
                     .on_click(|_event, _window, _app| {
                         println!("Button 1 clicked!");
-                    }),
+                    })
+                    .when_disabled(|this| this.bg(rgb(0xCCCCCC))),
             )
             .child(
                 button("button2")
@@ -36,7 +38,8 @@ impl Render for Showcase {
                     .child(span("Button 2 (disabled)").text_color(rgb(0xFF0000)))
                     .on_click(|_event, _window, _app| {
                         println!("Button 2 clicked!");
-                    }),
+                    })
+                    .when_disabled(|this| this.bg(rgb(0xCCCCCC))),
             )
     }
 }
