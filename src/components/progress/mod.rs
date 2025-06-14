@@ -1,4 +1,4 @@
-use gpui::{prelude::FluentBuilder, *};
+use gpui::*;
 
 mod fill;
 mod track;
@@ -12,7 +12,7 @@ pub struct Progress {
     value: f32,
     min_value: f32,
     max_value: f32,
-    track: Option<ProgressTrack>,
+    children: Vec<AnyElement>,
 }
 
 impl Default for Progress {
@@ -28,7 +28,7 @@ impl Progress {
             value: 0.0,
             min_value: 0.0,
             max_value: 100.0,
-            track: None,
+            children: Vec::new(),
         }
     }
 
@@ -61,8 +61,14 @@ impl Progress {
             ProgressTrack::new(self.value, self.min_value, self.max_value),
             percentage,
         );
-        self.track = Some(track);
+        self.children.push(track.into_any_element());
         self
+    }
+}
+
+impl ParentElement for Progress {
+    fn extend(&mut self, elements: impl IntoIterator<Item = AnyElement>) {
+        self.children.extend(elements);
     }
 }
 
@@ -74,7 +80,6 @@ impl Styled for Progress {
 
 impl RenderOnce for Progress {
     fn render(self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
-        self.base
-            .when_some(self.track, |this, track| this.child(track))
+        self.base.children(self.children)
     }
 }

@@ -1,7 +1,7 @@
 use gpui::*;
 use lapislazuli::{
     Disableable,
-    components::{button, progress},
+    components::{button, progress, separator},
     primitives::{a, span, v_flex},
 };
 
@@ -62,13 +62,17 @@ impl Render for Showcase {
                     .on_click(cx.listener(Self::decrement_progress))
                     .when_disabled(|this| this.bg(rgb(0xCCCCCC))),
             )
+            .child(separator().bg(rgb(0xbcbcbc)).when_horizontal_else(
+                |this| this.w(rems(10.)).h(px(1.)),
+                |this| this.h(rems(10.)).w(px(1.)),
+            ))
             .child(
                 progress()
                     .bg(rgb(0xEEEEEE))
                     .w(rems(10.0))
-                    .h(rems(2.0))
                     .p(rems(0.5))
                     .value(self.progress_value)
+                    .child(span("Progress").text_color(rgb(0x000000)))
                     .track(|track, _| {
                         track
                             .bg(rgb(0xCCCCCC))
