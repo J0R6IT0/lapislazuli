@@ -2,7 +2,7 @@ use gpui::*;
 use lapislazuli::{
     Disableable,
     components::{button, progress},
-    primitives::{span, v_flex},
+    primitives::{a, span, v_flex},
 };
 
 struct Showcase {
@@ -80,6 +80,12 @@ impl Render for Showcase {
                                     .w(DefiniteLength::Fraction(progress))
                             })
                     }),
+            )
+            .child(
+                a("https://github.com/J0R6IT0/lapislazuli")
+                    .child("Source Code!!")
+                    .cursor_pointer()
+                    .text_color(rgb(0x0000FF)),
             )
     }
 }
