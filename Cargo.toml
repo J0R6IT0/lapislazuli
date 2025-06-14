@@ -1,0 +1,8 @@
+[package]
+name = "lapislazuli"
+version = "0.1.0"
+edition = "2024"
+authors = ["Jorge Pardo"]
+
+[dependencies]
+gpui = { git = "https://github.com/zed-industries/zed.git" }
