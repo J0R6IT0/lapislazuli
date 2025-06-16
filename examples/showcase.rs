@@ -1,19 +1,51 @@
 use gpui::*;
 use lapislazuli::{
     Disableable,
-    components::{button, progress, separator},
-    primitives::{a, span, v_flex},
+    components::{
+        button,
+        input::{InputState, TextInput, init},
+        progress, separator, text_input,
+    },
+    primitives::{a, h_flex_center, span, v_flex},
 };
 
 struct Showcase {
     progress_value: f32,
+    text_state: Entity<InputState>,
+    focus_handle: FocusHandle,
+}
+
+impl Focusable for Showcase {
+    fn focus_handle(&self, _: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
 }
 
 impl Showcase {
-    fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
-        app.new(|_cx| Self {
+    fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
+        init(app);
+
+        let text_state = app.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder("Type here...")
+                .placeholder_color(rgb(0x726f76))
+        });
+
+        let view = app.new(|cx| Self {
+            text_state,
+            focus_handle: cx.focus_handle(),
             progress_value: 50.0,
+        });
+
+        let view_clone = view.clone();
+        app.observe_keystrokes(move |ev, _, cx| {
+            view_clone.update(cx, |view, cx| {
+                //cx.notify();a
+            })
         })
+        .detach();
+
+        view
     }
 
     fn increment_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
@@ -30,6 +62,7 @@ impl Showcase {
 impl Render for Showcase {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
+            .track_focus(&self.focus_handle(cx))
             .p(rems(2.0))
             .gap(rems(1.0))
             .child(
@@ -79,9 +112,7 @@ impl Render for Showcase {
                             .h(rems(1.0))
                             .w_full()
                             .fill(|fill, progress| {
-                                fill.bg(rgb(0x00FF00))
-                                    .h(rems(1.0))
-                                    .w(DefiniteLength::Fraction(progress))
+                                fill.bg(rgb(0x00FF00)).h(rems(1.0)).w(relative(progress))
                             })
                     }),
             )
@@ -90,6 +121,26 @@ impl Render for Showcase {
                     .child("Source Code!!")
                     .cursor_pointer()
                     .text_color(rgb(0x0000FF)),
+            )
+            .child(
+                text_input(self.text_state.clone())
+                    .border_color(rgb(0x373737))
+                    .text_color(rgb(0xbab6be))
+                    .h(px(48.))
+                    .pr(px(16.))
+                    .pl(px(8.))
+                    .border_1()
+                    .max_w(rems(15.))
+                    .rounded_md()
+                    .gap(px(8.))
+                    .leading(
+                        h_flex_center()
+                            .h(px(32.))
+                            .w(px(32.))
+                            .bg(rgb(0x373737))
+                            .line_height(px(16.))
+                            .child(span("Ee").text_color(rgb(0xFFFFFF))),
+                    ),
             )
     }
 }
