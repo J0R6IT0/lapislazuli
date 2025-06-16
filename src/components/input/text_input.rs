@@ -8,6 +8,7 @@ use gpui::{prelude::FluentBuilder, *};
 pub struct TextInput {
     base: Div,
     state: Entity<InputState>,
+    left_click_clear: bool,
     leading: Option<AnyElement>,
 }
 
@@ -16,6 +17,7 @@ impl TextInput {
         Self {
             base: h_flex_center().cursor(CursorStyle::IBeam),
             state,
+            left_click_clear: false,
             leading: None,
         }
     }
@@ -25,6 +27,12 @@ impl TextInput {
             this.placeholder_color = color.into();
             cx.notify();
         });
+        self
+    }
+
+    /// Clear the field on left click
+    pub fn left_click_clear(mut self, clear: bool) -> Self {
+        self.left_click_clear = clear;
         self
     }
 
@@ -77,6 +85,12 @@ impl RenderOnce for TextInput {
                 window.listener_for(&self.state, InputState::on_mouse_up),
             )
             .on_mouse_move(window.listener_for(&self.state, InputState::on_mouse_move))
+            .when(self.left_click_clear, |this| {
+                this.on_mouse_down(
+                    MouseButton::Right,
+                    window.listener_for(&self.state, InputState::left_click_clear),
+                )
+            })
             .when_some(self.leading, |this, leading| this.child(leading))
             .child(self.state.clone())
     }

@@ -39,6 +39,7 @@ actions!(
         Copy,
         Paste,
         Cut,
+        Clear,
     ]
 );
 
@@ -411,7 +412,16 @@ impl InputState {
         self.offset_from_utf16(range_utf16.start)..self.offset_from_utf16(range_utf16.end)
     }
 
-    pub(super) fn reset(&mut self) {
+    pub(super) fn left_click_clear(
+        &mut self,
+        _event: &MouseDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.clear(&Clear, window, cx)
+    }
+
+    pub(super) fn clear(&mut self, _: &Clear, _: &mut Window, cx: &mut Context<Self>) {
         self.value = "".into();
         self.selected_range = 0..0;
         self.selection_reversed = false;
@@ -419,6 +429,7 @@ impl InputState {
         self.last_layout = None;
         self.last_bounds = None;
         self.selecting = false;
+        cx.notify();
     }
 }
 

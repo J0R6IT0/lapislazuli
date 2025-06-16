@@ -3,7 +3,7 @@ use lapislazuli::{
     Disableable,
     components::{
         button,
-        input::{InputState, TextInput, init},
+        input::{InputState, init},
         progress, separator, text_input,
     },
     primitives::{a, h_flex_center, span, v_flex},
@@ -31,21 +31,11 @@ impl Showcase {
                 .placeholder_color(rgb(0x726f76))
         });
 
-        let view = app.new(|cx| Self {
+        app.new(|cx| Self {
             text_state,
             focus_handle: cx.focus_handle(),
             progress_value: 50.0,
-        });
-
-        let view_clone = view.clone();
-        app.observe_keystrokes(move |ev, _, cx| {
-            view_clone.update(cx, |view, cx| {
-                //cx.notify();a
-            })
         })
-        .detach();
-
-        view
     }
 
     fn increment_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
@@ -133,6 +123,7 @@ impl Render for Showcase {
                     .max_w(rems(15.))
                     .rounded_md()
                     .gap(px(8.))
+                    .left_click_clear(true)
                     .leading(
                         h_flex_center()
                             .h(px(32.))
