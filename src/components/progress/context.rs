@@ -17,6 +17,14 @@ impl ProgressContext {
         }
     }
 
+    pub fn percentage_of(&self, value: f32) -> f32 {
+        if self.max_value > self.min_value {
+            ((value - self.min_value) / (self.max_value - self.min_value)).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+
     pub fn string_percentage(&self) -> String {
         format!("{:.2}%", self.percentage() * 100.0)
     }

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use gpui::*;
 use lapislazuli::{
     Disableable, ParentElementWithContext,
@@ -11,6 +13,7 @@ use lapislazuli::{
 
 struct Showcase {
     progress_value: f32,
+    previous_progress_value: f32,
     text_state: Entity<InputState>,
     focus_handle: FocusHandle,
     disabled: bool,
@@ -37,30 +40,35 @@ impl Showcase {
             text_state,
             focus_handle: cx.focus_handle(),
             progress_value: 65.0,
+            previous_progress_value: 65.0,
             disabled: false,
             button_click_count: 0,
         })
     }
 
     fn increment_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+        self.previous_progress_value = self.progress_value;
         self.progress_value = (self.progress_value + 5.0).min(100.0);
         self.button_click_count += 1;
         cx.notify();
     }
 
     fn decrement_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+        self.previous_progress_value = self.progress_value;
         self.progress_value = (self.progress_value - 5.0).max(0.0);
         self.button_click_count += 1;
         cx.notify();
     }
 
     fn reset_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+        self.previous_progress_value = self.progress_value;
         self.progress_value = 0.0;
         self.button_click_count += 1;
         cx.notify();
     }
 
     fn complete_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+        self.previous_progress_value = self.progress_value;
         self.progress_value = 100.0;
         self.button_click_count += 1;
         cx.notify();
@@ -324,8 +332,8 @@ impl Render for Showcase {
                                     .gap(rems(1.0))
                                     .value_label(|provider| {
                                         format!(
-                                            "{:.0}% complete ({}/100 tasks)",
-                                            provider.percentage(),
+                                            "{}% complete ({}/100 tasks)",
+                                            (provider.percentage() * 100.0).round() as u8,
                                             provider.value() as u8
                                         )
                                     })
@@ -346,20 +354,27 @@ impl Render for Showcase {
                                             )
                                     })
                                     .child_with_context(|provider| {
+                                        let previous_percent = provider.percentage_of(self.previous_progress_value);
+                                        let percentage = provider.percentage();
                                         ProgressTrack::new()
                                             .bg(rgb(0xf1f5f9))
                                             .border_1()
                                             .border_color(rgb(0xe2e8f0))
                                             .h(rems(1.5))
                                             .w_full()
-                                            .rounded_full()
+                                            .rounded_3xl()
                                             .overflow_hidden()
                                             .child(
                                                 ProgressFill::new()
                                                     .bg(progress_color)
                                                     .h_full()
-                                                    .rounded_full()
-                                                    .w(relative(provider.percentage()))
+                                                    .rounded_3xl()
+                                                    .with_animation(("progress", (percentage * 1000.) as u32), Animation::new(Duration::from_millis(200)), move |this, delta| {
+                                                        let previous_size = previous_percent;
+                                                        let current_size = percentage;
+                                                        let interpolated_size = previous_size + (current_size - previous_size) * delta;
+                                                        this.w(relative(interpolated_size))
+                                                    })
                                             )
                                     })
                             )
