@@ -52,6 +52,7 @@ impl Showcase {
 impl Render for Showcase {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
+            .font_family(".SystemUIFont")
             .track_focus(&self.focus_handle(cx))
             .p(rems(2.0))
             .gap(rems(1.0))
