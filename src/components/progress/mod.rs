@@ -4,6 +4,7 @@ mod fill;
 mod track;
 
 pub use fill::*;
+use smallvec::SmallVec;
 pub use track::*;
 
 #[derive(IntoElement)]
@@ -12,7 +13,7 @@ pub struct Progress {
     value: f32,
     min_value: f32,
     max_value: f32,
-    children: Vec<AnyElement>,
+    children: SmallVec<[AnyElement; 2]>,
 }
 
 impl Default for Progress {
@@ -28,7 +29,7 @@ impl Progress {
             value: 0.0,
             min_value: 0.0,
             max_value: 100.0,
-            children: Vec::new(),
+            children: SmallVec::new(),
         }
     }
 

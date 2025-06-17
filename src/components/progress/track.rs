@@ -1,5 +1,6 @@
 use crate::components::progress::ProgressFill;
 use gpui::*;
+use smallvec::SmallVec;
 
 #[derive(IntoElement)]
 pub struct ProgressTrack {
@@ -7,7 +8,7 @@ pub struct ProgressTrack {
     pub(super) value: f32,
     pub(super) min_value: f32,
     pub(super) max_value: f32,
-    children: Vec<AnyElement>,
+    children: SmallVec<[AnyElement; 2]>,
 }
 
 impl ProgressTrack {
@@ -17,7 +18,7 @@ impl ProgressTrack {
             value,
             min_value,
             max_value,
-            children: Vec::new(),
+            children: SmallVec::new(),
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::components::input::element::TextElement;
+use crate::components::input::element::{CURSOR_WIDTH, TextElement};
 use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
@@ -362,7 +362,7 @@ impl InputState {
             offset.x = offset.x.max(px(0.0));
 
             if text_width > visible_width {
-                offset.x = offset.x.min(text_width - visible_width + px(1.0));
+                offset.x = offset.x.min(text_width - visible_width);
             } else {
                 offset.x = px(0.0);
             }
@@ -401,8 +401,8 @@ impl InputState {
 
         if cursor_x < visible_left {
             new_scroll_x = cursor_x.max(px(0.0));
-        } else if cursor_x >= visible_right {
-            new_scroll_x = cursor_x - visible_width + px(1.0);
+        } else if cursor_x + px(CURSOR_WIDTH) >= visible_right {
+            new_scroll_x = cursor_x - visible_width + px(CURSOR_WIDTH);
         }
 
         if new_scroll_x != current_scroll.x {

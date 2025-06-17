@@ -1,7 +1,7 @@
 use crate::components::input::state::InputState;
 use gpui::*;
 
-const CURSOR_WIDTH: f32 = 1.0;
+pub const CURSOR_WIDTH: f32 = 1.0;
 const MARKED_TEXT_UNDERLINE_THICKNESS: f32 = 1.0;
 const SELECTION_COLOR: u32 = 0x3311ff;
 

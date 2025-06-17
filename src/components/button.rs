@@ -1,12 +1,13 @@
 use crate::Disableable;
 use gpui::{prelude::FluentBuilder, *};
+use smallvec::SmallVec;
 
 #[allow(clippy::type_complexity)]
 #[derive(IntoElement)]
 pub struct Button {
     base: Stateful<Div>,
     disabled: bool,
-    children: Vec<AnyElement>,
+    children: SmallVec<[AnyElement; 2]>,
     on_click: Option<Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
     stop_propagation: bool,
 }
@@ -16,7 +17,7 @@ impl Button {
         Self {
             base: div().id(id),
             disabled: false,
-            children: Vec::new(),
+            children: SmallVec::new(),
             on_click: None,
             stop_propagation: true,
         }

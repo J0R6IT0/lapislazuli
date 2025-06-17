@@ -1,9 +1,11 @@
 use gpui::*;
+use smallvec::SmallVec;
 
 #[derive(IntoElement)]
 pub struct Separator {
     base: Div,
     vertical: bool,
+    children: SmallVec<[AnyElement; 1]>,
 }
 
 impl Default for Separator {
@@ -17,6 +19,7 @@ impl Separator {
         Self {
             base: div(),
             vertical: false,
+            children: SmallVec::new(),
         }
     }
 
@@ -69,8 +72,14 @@ impl Styled for Separator {
     }
 }
 
+impl ParentElement for Separator {
+    fn extend(&mut self, elements: impl IntoIterator<Item = AnyElement>) {
+        self.children.extend(elements);
+    }
+}
+
 impl RenderOnce for Separator {
     fn render(self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
-        self.base
+        self.base.children(self.children)
     }
 }

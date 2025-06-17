@@ -9,4 +9,5 @@ repository = "https://github.com/J0R6IT0/lapislazuli"
 
 [dependencies]
 gpui = { git = "https://github.com/zed-industries/zed.git" }
+smallvec = "1.15.1"
 unicode-segmentation = "1.12.0"
