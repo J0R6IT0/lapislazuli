@@ -1,4 +1,7 @@
-use crate::components::input::element::{CURSOR_WIDTH, TextElement};
+use crate::components::input::{
+    cursor::Cursor,
+    element::{CURSOR_WIDTH, TextElement},
+};
 use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
@@ -113,6 +116,7 @@ pub struct InputState {
     pub(super) selecting: bool,
     pub(super) scroll_handle: ScrollHandle,
     pub(super) should_auto_scroll: bool,
+    pub(super) cursor: Entity<Cursor>,
 }
 
 impl InputState {
@@ -121,9 +125,30 @@ impl InputState {
     // ============================================================================
 
     /// Create a new InputState with default values
-    pub fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let cursor = cx.new(|_| Cursor::new());
+        let focus_handle = cx.focus_handle();
+
+        cx.observe(&cursor, |_, _, cx| cx.notify()).detach();
+        cx.observe_window_activation(window, |input, window, cx| {
+            if window.is_window_active() {
+                let focus_handle = input.focus_handle.clone();
+                if focus_handle.is_focused(window) {
+                    input.cursor.update(cx, |cursor, cx| {
+                        cursor.start(cx);
+                    });
+                    return;
+                }
+            }
+            input.cursor.update(cx, |cursor, cx| {
+                cursor.stop(cx);
+            });
+        })
+        .detach();
+        cx.on_focus(&focus_handle, window, Self::on_focus).detach();
+
         Self {
-            focus_handle: cx.focus_handle(),
+            focus_handle,
             value: SharedString::new(""),
             placeholder: SharedString::new(""),
             placeholder_color: hsla(0., 0., 0.5, 0.5),
@@ -135,6 +160,7 @@ impl InputState {
             selecting: false,
             scroll_handle: ScrollHandle::new(),
             should_auto_scroll: false,
+            cursor,
         }
     }
 
@@ -154,6 +180,22 @@ impl InputState {
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
         self.value = value.into();
         self
+    }
+
+    fn on_focus(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+        self.cursor.update(cx, |cursor, cx| {
+            cursor.start(cx);
+        });
+    }
+
+    fn pause_cursor_blink(&mut self, cx: &mut Context<Self>) {
+        self.cursor.update(cx, |cursor, cx| {
+            cursor.pause(cx);
+        });
+    }
+
+    pub(crate) fn cursor_visible(&self, window: &Window, app: &App) -> bool {
+        self.focus_handle.is_focused(window) && self.cursor.read(app).visible()
     }
 
     // ============================================================================
@@ -202,6 +244,7 @@ impl InputState {
 
     /// Move cursor to a specific offset
     pub(super) fn move_to(&mut self, offset: usize, cx: &mut Context<Self>) {
+        self.pause_cursor_blink(cx);
         let offset = offset.clamp(0, self.value.len());
         self.selected_range = offset..offset;
         self.should_auto_scroll = true;
@@ -808,6 +851,7 @@ impl EntityInputHandler for InputState {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.pause_cursor_blink(cx);
         let range = range_utf16
             .as_ref()
             .map(|range_utf16| self.range_from_utf16(range_utf16))

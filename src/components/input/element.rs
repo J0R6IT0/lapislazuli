@@ -66,14 +66,15 @@ impl TextElement {
             .unwrap();
     }
 
-    /// Paints the cursor if the input is focused
+    /// Paints the cursor if the input is focused and cursor is visible
     fn paint_cursor(
         &self,
         focus_handle: &FocusHandle,
         window: &mut Window,
+        app: &App,
         prepaint: &mut PrepaintState,
     ) {
-        if focus_handle.is_focused(window) {
+        if focus_handle.is_focused(window) && self.input.read(app).cursor_visible(window, app) {
             if let Some(cursor) = prepaint.cursor.take() {
                 window.paint_quad(cursor);
             }
@@ -275,7 +276,7 @@ impl Element for TextElement {
         let text_origin = point(bounds.origin.x - scroll_offset.x, bounds.origin.y);
         self.paint_text(line.clone(), text_origin, window, app);
 
-        self.paint_cursor(&focus_handle, window, prepaint);
+        self.paint_cursor(&focus_handle, window, app, prepaint);
 
         self.input.update(app, |input, _cx| {
             input.last_layout = Some(line);
