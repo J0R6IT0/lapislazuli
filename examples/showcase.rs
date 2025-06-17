@@ -13,6 +13,7 @@ struct Showcase {
     progress_value: f32,
     text_state: Entity<InputState>,
     focus_handle: FocusHandle,
+    disabled: bool,
 }
 
 impl Focusable for Showcase {
@@ -35,6 +36,7 @@ impl Showcase {
             text_state,
             focus_handle: cx.focus_handle(),
             progress_value: 50.0,
+            disabled: false,
         })
     }
 
@@ -45,6 +47,11 @@ impl Showcase {
 
     fn decrement_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
         self.progress_value -= 2.0;
+        cx.notify();
+    }
+
+    fn set_disabled<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+        self.disabled = !self.disabled;
         cx.notify();
     }
 }
@@ -70,8 +77,8 @@ impl Render for Showcase {
                     .bg(rgb(0xFFFFFF))
                     .w(rems(10.0))
                     .h(rems(2.0))
-                    .disabled(true)
-                    .child(span("Much more (disabled)").text_color(rgb(0xFF0000)))
+                    .disabled(self.disabled)
+                    .child(span("Much more").text_color(rgb(0xFF0000)))
                     .on_click(|_event, _window, _app| {
                         println!("Button 2 clicked!");
                     })
@@ -126,12 +133,16 @@ impl Render for Showcase {
                     .gap(px(8.))
                     .left_click_clear(true)
                     .leading(
-                        h_flex_center()
-                            .h(px(32.))
-                            .w(px(32.))
-                            .bg(rgb(0x373737))
-                            .line_height(px(16.))
-                            .child(span("Ee").text_color(rgb(0xFFFFFF))),
+                        button("search_leading")
+                            .on_click(cx.listener(Self::set_disabled))
+                            .child(
+                                h_flex_center()
+                                    .h(px(32.))
+                                    .w(px(32.))
+                                    .bg(rgb(0x373737))
+                                    .line_height(px(16.))
+                                    .child(span("Ee").text_color(rgb(0xFFFFFF))),
+                            ),
                     ),
             )
     }
