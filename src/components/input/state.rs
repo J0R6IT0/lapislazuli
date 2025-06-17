@@ -9,26 +9,50 @@ pub(super) const CONTEXT: &str = "input";
 /// Initialize input key bindings and actions
 pub fn init(cx: &mut App) {
     cx.bind_keys([
-        KeyBinding::new("backspace", Backspace, Some(CONTEXT)),
-        KeyBinding::new("delete", Delete, Some(CONTEXT)),
+        // Basic cursor movement
         KeyBinding::new("left", Left, Some(CONTEXT)),
         KeyBinding::new("right", Right, Some(CONTEXT)),
-        KeyBinding::new("shift-left", SelectLeft, Some(CONTEXT)),
-        KeyBinding::new("shift-right", SelectRight, Some(CONTEXT)),
-        KeyBinding::new("cmd-a", SelectAll, Some(CONTEXT)),
-        KeyBinding::new("cmd-v", Paste, Some(CONTEXT)),
-        KeyBinding::new("cmd-c", Copy, Some(CONTEXT)),
-        KeyBinding::new("cmd-x", Cut, Some(CONTEXT)),
         KeyBinding::new("home", Home, Some(CONTEXT)),
+        KeyBinding::new("end", End, Some(CONTEXT)),
+        // macOS cursor movement alternatives
         #[cfg(target_os = "macos")]
         KeyBinding::new("ctrl-a", Home, Some(CONTEXT)),
         #[cfg(target_os = "macos")]
         KeyBinding::new("cmd-left", Home, Some(CONTEXT)),
-        KeyBinding::new("end", End, Some(CONTEXT)),
         #[cfg(target_os = "macos")]
         KeyBinding::new("ctrl-e", End, Some(CONTEXT)),
         #[cfg(target_os = "macos")]
         KeyBinding::new("cmd-right", End, Some(CONTEXT)),
+        // Text selection
+        KeyBinding::new("shift-left", SelectLeft, Some(CONTEXT)),
+        KeyBinding::new("shift-right", SelectRight, Some(CONTEXT)),
+        KeyBinding::new("cmd-a", SelectAll, Some(CONTEXT)),
+        #[cfg(not(target_os = "macos"))]
+        KeyBinding::new("ctrl-a", SelectAll, Some(CONTEXT)),
+        // Basic deletion
+        KeyBinding::new("backspace", Backspace, Some(CONTEXT)),
+        KeyBinding::new("delete", Delete, Some(CONTEXT)),
+        // Word deletion
+        KeyBinding::new("alt-backspace", DeleteWordLeft, Some(CONTEXT)),
+        KeyBinding::new("alt-delete", DeleteWordRight, Some(CONTEXT)),
+        #[cfg(target_os = "macos")]
+        KeyBinding::new("alt-backspace", DeleteWordLeft, Some(CONTEXT)),
+        #[cfg(target_os = "macos")]
+        KeyBinding::new("alt-delete", DeleteWordRight, Some(CONTEXT)),
+        // Line deletion
+        KeyBinding::new("cmd-backspace", DeleteToBeginning, Some(CONTEXT)),
+        KeyBinding::new("cmd-delete", DeleteToEnd, Some(CONTEXT)),
+        // Clipboard operations
+        KeyBinding::new("cmd-c", Copy, Some(CONTEXT)),
+        KeyBinding::new("cmd-v", Paste, Some(CONTEXT)),
+        KeyBinding::new("cmd-x", Cut, Some(CONTEXT)),
+        #[cfg(not(target_os = "macos"))]
+        KeyBinding::new("ctrl-c", Copy, Some(CONTEXT)),
+        #[cfg(not(target_os = "macos"))]
+        KeyBinding::new("ctrl-v", Paste, Some(CONTEXT)),
+        #[cfg(not(target_os = "macos"))]
+        KeyBinding::new("ctrl-x", Cut, Some(CONTEXT)),
+        // Special features
         KeyBinding::new("ctrl-cmd-space", ShowCharacterPalette, Some(CONTEXT)),
     ]);
 }
@@ -50,6 +74,10 @@ actions!(
         Paste,
         Cut,
         Clear,
+        DeleteWordLeft,
+        DeleteWordRight,
+        DeleteToBeginning,
+        DeleteToEnd,
     ]
 );
 
@@ -255,6 +283,64 @@ impl InputState {
         self.selecting = false;
         self.should_auto_scroll = true;
         cx.notify();
+    }
+
+    /// Delete word to the left of cursor
+    pub(super) fn delete_word_left(
+        &mut self,
+        _: &DeleteWordLeft,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.selected_range.is_empty() {
+            let cursor_pos = self.cursor_offset();
+            let word_start = self.previous_word_boundary(cursor_pos);
+            self.selected_range = word_start..cursor_pos;
+        }
+        self.replace_text_in_range(None, "", window, cx);
+    }
+
+    /// Delete word to the right of cursor
+    pub(super) fn delete_word_right(
+        &mut self,
+        _: &DeleteWordRight,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.selected_range.is_empty() {
+            let cursor_pos = self.cursor_offset();
+            let word_end = self.next_word_boundary(cursor_pos);
+            self.selected_range = cursor_pos..word_end;
+        }
+        self.replace_text_in_range(None, "", window, cx);
+    }
+
+    /// Delete from cursor to beginning of input
+    pub(super) fn delete_to_beginning(
+        &mut self,
+        _: &DeleteToBeginning,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.selected_range.is_empty() {
+            let cursor_pos = self.cursor_offset();
+            self.selected_range = 0..cursor_pos;
+        }
+        self.replace_text_in_range(None, "", window, cx);
+    }
+
+    /// Delete from cursor to end of input
+    pub(super) fn delete_to_end(
+        &mut self,
+        _: &DeleteToEnd,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.selected_range.is_empty() {
+            let cursor_pos = self.cursor_offset();
+            self.selected_range = cursor_pos..self.value.len();
+        }
+        self.replace_text_in_range(None, "", window, cx);
     }
 
     // ============================================================================

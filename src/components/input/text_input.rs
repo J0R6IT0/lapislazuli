@@ -72,6 +72,10 @@ impl RenderOnce for TextInput {
             .on_action(window.listener_for(&self.state, InputState::paste))
             .on_action(window.listener_for(&self.state, InputState::cut))
             .on_action(window.listener_for(&self.state, InputState::copy))
+            .on_action(window.listener_for(&self.state, InputState::delete_word_left))
+            .on_action(window.listener_for(&self.state, InputState::delete_word_right))
+            .on_action(window.listener_for(&self.state, InputState::delete_to_beginning))
+            .on_action(window.listener_for(&self.state, InputState::delete_to_end))
             .on_mouse_down(
                 MouseButton::Left,
                 window.listener_for(&self.state, InputState::on_mouse_down),
