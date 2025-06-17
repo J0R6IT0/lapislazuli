@@ -671,7 +671,7 @@ impl EntityInputHandler for InputState {
         self.selected_range = new_cursor_pos..new_cursor_pos;
         self.marked_range = None;
         self.should_auto_scroll = true;
-        cx.notify();
+        self.update_scroll_offset(None, cx);
     }
 
     fn replace_and_mark_text_in_range(
