@@ -14,6 +14,9 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("right", Right, Some(CONTEXT)),
         KeyBinding::new("home", Home, Some(CONTEXT)),
         KeyBinding::new("end", End, Some(CONTEXT)),
+        // Word movement
+        KeyBinding::new("alt-left", WordLeft, Some(CONTEXT)),
+        KeyBinding::new("alt-right", WordRight, Some(CONTEXT)),
         // macOS cursor movement alternatives
         #[cfg(target_os = "macos")]
         KeyBinding::new("ctrl-a", Home, Some(CONTEXT)),
@@ -29,15 +32,21 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("cmd-a", SelectAll, Some(CONTEXT)),
         #[cfg(not(target_os = "macos"))]
         KeyBinding::new("ctrl-a", SelectAll, Some(CONTEXT)),
+        // Word selection
+        KeyBinding::new("alt-shift-left", SelectWordLeft, Some(CONTEXT)),
+        KeyBinding::new("alt-shift-right", SelectWordRight, Some(CONTEXT)),
+        // Line selection
+        KeyBinding::new("shift-home", SelectToHome, Some(CONTEXT)),
+        KeyBinding::new("shift-end", SelectToEnd, Some(CONTEXT)),
+        #[cfg(target_os = "macos")]
+        KeyBinding::new("cmd-shift-left", SelectToHome, Some(CONTEXT)),
+        #[cfg(target_os = "macos")]
+        KeyBinding::new("cmd-shift-right", SelectToEnd, Some(CONTEXT)),
         // Basic deletion
         KeyBinding::new("backspace", Backspace, Some(CONTEXT)),
         KeyBinding::new("delete", Delete, Some(CONTEXT)),
         // Word deletion
         KeyBinding::new("alt-backspace", DeleteWordLeft, Some(CONTEXT)),
-        KeyBinding::new("alt-delete", DeleteWordRight, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("alt-backspace", DeleteWordLeft, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
         KeyBinding::new("alt-delete", DeleteWordRight, Some(CONTEXT)),
         // Line deletion
         KeyBinding::new("cmd-backspace", DeleteToBeginning, Some(CONTEXT)),
@@ -78,6 +87,12 @@ actions!(
         DeleteWordRight,
         DeleteToBeginning,
         DeleteToEnd,
+        WordLeft,
+        WordRight,
+        SelectWordLeft,
+        SelectWordRight,
+        SelectToHome,
+        SelectToEnd,
     ]
 );
 
@@ -163,6 +178,18 @@ impl InputState {
         }
     }
 
+    /// Move cursor left by one word
+    pub(super) fn word_left(&mut self, _: &WordLeft, _: &mut Window, cx: &mut Context<Self>) {
+        let new_offset = self.previous_word_boundary(self.cursor_offset());
+        self.move_to(new_offset, cx);
+    }
+
+    /// Move cursor right by one word
+    pub(super) fn word_right(&mut self, _: &WordRight, _: &mut Window, cx: &mut Context<Self>) {
+        let new_offset = self.next_word_boundary(self.cursor_offset());
+        self.move_to(new_offset, cx);
+    }
+
     /// Move cursor to the beginning of the input
     pub(super) fn home(&mut self, _: &Home, _: &mut Window, cx: &mut Context<Self>) {
         self.move_to(0, cx);
@@ -193,6 +220,48 @@ impl InputState {
     /// Extend selection right by one grapheme cluster
     pub(super) fn select_right(&mut self, _: &SelectRight, _: &mut Window, cx: &mut Context<Self>) {
         self.select_to(self.next_boundary(self.cursor_offset()), cx);
+    }
+
+    /// Extend selection left by one word
+    pub(super) fn select_word_left(
+        &mut self,
+        _: &SelectWordLeft,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let new_offset = self.previous_word_boundary(self.cursor_offset());
+        self.select_to(new_offset, cx);
+    }
+
+    /// Extend selection right by one word
+    pub(super) fn select_word_right(
+        &mut self,
+        _: &SelectWordRight,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let new_offset = self.next_word_boundary(self.cursor_offset());
+        self.select_to(new_offset, cx);
+    }
+
+    /// Select from cursor to beginning of input
+    pub(super) fn select_to_home(
+        &mut self,
+        _: &SelectToHome,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_to(0, cx);
+    }
+
+    /// Select from cursor to end of input
+    pub(super) fn select_to_end(
+        &mut self,
+        _: &SelectToEnd,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_to(self.value.len(), cx);
     }
 
     /// Select all text in the input
