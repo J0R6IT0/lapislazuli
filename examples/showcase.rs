@@ -4,7 +4,7 @@ use gpui::*;
 use lapislazuli::{
     Disableable, ParentElementWithContext,
     components::{
-        Button, Separator,
+        Button, Checkbox, Separator,
         input::{InputState, TextInput, init},
         progress::{Progress, ProgressFill, ProgressTrack},
     },
@@ -76,6 +76,11 @@ impl Showcase {
 
     fn toggle_disabled<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
         self.disabled = !self.disabled;
+        cx.notify();
+    }
+
+    fn set_disabled(&mut self, disabled: &bool, _window: &mut Window, cx: &mut Context<Self>) {
+        self.disabled = *disabled;
         cx.notify();
     }
 
@@ -231,7 +236,7 @@ impl Render for Showcase {
                                             .px(rems(1.5))
                                             .py(rems(0.75))
                                             .rounded_md()
-                                            .child(span("+ increase").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .child(span("+ Increase").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
                                             .on_click(cx.listener(Self::increment_progress))
                                             .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
                                     )
@@ -243,7 +248,7 @@ impl Render for Showcase {
                                             .px(rems(1.5))
                                             .py(rems(0.75))
                                             .rounded_md()
-                                            .child(span("- decrease").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .child(span("- Decrease").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
                                             .on_click(cx.listener(Self::decrement_progress))
                                             .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
                                     )
@@ -255,7 +260,7 @@ impl Render for Showcase {
                                             .px(rems(1.5))
                                             .py(rems(0.75))
                                             .rounded_md()
-                                            .child(span("reset").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .child(span("Reset").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
                                             .on_click(cx.listener(Self::reset_progress))
                                             .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
                                     )
@@ -267,9 +272,40 @@ impl Render for Showcase {
                                             .px(rems(1.5))
                                             .py(rems(0.75))
                                             .rounded_md()
-                                            .child(span("complete").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .child(span("Complete").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
                                             .on_click(cx.listener(Self::complete_progress))
                                             .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
+                                    )
+                            )
+                            .child(
+                                span("State Controls")
+                                    .text_size(rems(1.1))
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_color(rgb(0x374151))
+                            )
+                            .child(
+                                h_flex()
+                                    .gap(rems(1.0))
+                                    .items_center()
+                                    .child(
+                                        h_flex()
+                                            .gap(rems(0.5))
+                                            .items_center()
+                                            .child(Checkbox::new("checkbox")
+                                                        .rounded_md()
+                                                        .checked(self.disabled)
+                                                        .on_change(cx.listener(Self::set_disabled))
+                                                        .border_1()
+                                                        .border_color(rgb(0xe2e8f0))
+                                                        .indicator(span("✓").text_color(rgb(0xffffff)).text_xs())
+                                                        .size(rems(1.5))
+                                                        .when_checked(|this| this.bg(rgb(0x6366f1)))
+                                            )
+                                            .child(
+                                                span("Disable Controls")
+                                                    .text_color(rgb(0x374151))
+                                                    .text_size(rems(0.95))
+                                            )
                                     )
                             )
                             .child(
@@ -296,7 +332,7 @@ impl Render for Showcase {
                                             .px(rems(1.5))
                                             .py(rems(0.75))
                                             .rounded_md()
-                                            .child(span("reset counter").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .child(span("Reset Counter").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
                                             .on_click(cx.listener(Self::reset_counter))
                                     )
                             )

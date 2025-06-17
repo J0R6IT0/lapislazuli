@@ -69,19 +69,19 @@ impl InteractiveElement for Button {
 impl RenderOnce for Button {
     fn render(self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
         self.base
-            .when_some(self.on_click, |this, on_click| {
-                if self.disabled {
-                    return this;
-                }
-                let stop_propagation = self.stop_propagation;
-                this.on_mouse_down(MouseButton::Left, move |_, window, app| {
-                    window.prevent_default();
-                    if stop_propagation {
-                        app.stop_propagation();
-                    }
-                })
-                .on_click(on_click)
-            })
+            .when_some(
+                self.on_click.filter(|_| !self.disabled),
+                |this, on_click| {
+                    let stop_propagation = self.stop_propagation;
+                    this.on_mouse_down(MouseButton::Left, move |_, window, app| {
+                        window.prevent_default();
+                        if stop_propagation {
+                            app.stop_propagation();
+                        }
+                    })
+                    .on_click(on_click)
+                },
+            )
             .children(self.children)
     }
 }
