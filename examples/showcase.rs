@@ -2,10 +2,9 @@ use gpui::*;
 use lapislazuli::{
     Disableable, ParentElementWithContext,
     components::{
-        button,
-        input::{InputState, init},
+        Button, Separator,
+        input::{InputState, TextInput, init},
         progress::{Progress, ProgressFill, ProgressTrack},
-        separator, text_input,
     },
     primitives::{a, h_flex, h_flex_center, span, v_flex},
 };
@@ -15,6 +14,7 @@ struct Showcase {
     text_state: Entity<InputState>,
     focus_handle: FocusHandle,
     disabled: bool,
+    button_click_count: u32,
 }
 
 impl Focusable for Showcase {
@@ -29,141 +29,461 @@ impl Showcase {
 
         let text_state = app.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("Type here...")
-                .placeholder_color(rgb(0x726f76))
+                .placeholder("Try typing something here...")
+                .placeholder_color(rgb(0x9ca3af))
         });
 
         app.new(|cx| Self {
             text_state,
             focus_handle: cx.focus_handle(),
-            progress_value: 50.0,
+            progress_value: 65.0,
             disabled: false,
+            button_click_count: 0,
         })
     }
 
     fn increment_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
-        self.progress_value += 2.0;
+        self.progress_value = (self.progress_value + 5.0).min(100.0);
+        self.button_click_count += 1;
         cx.notify();
     }
 
     fn decrement_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
-        self.progress_value -= 2.0;
+        self.progress_value = (self.progress_value - 5.0).max(0.0);
+        self.button_click_count += 1;
         cx.notify();
     }
 
-    fn set_disabled<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+    fn reset_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+        self.progress_value = 0.0;
+        self.button_click_count += 1;
+        cx.notify();
+    }
+
+    fn complete_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+        self.progress_value = 100.0;
+        self.button_click_count += 1;
+        cx.notify();
+    }
+
+    fn toggle_disabled<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
         self.disabled = !self.disabled;
+        cx.notify();
+    }
+
+    fn reset_counter<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+        self.button_click_count = 0;
         cx.notify();
     }
 }
 
 impl Render for Showcase {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let progress_color = if self.progress_value >= 100.0 {
+            rgb(0x10b981)
+        } else if self.progress_value >= 70.0 {
+            rgb(0x3b82f6)
+        } else if self.progress_value >= 40.0 {
+            rgb(0xf59e0b)
+        } else {
+            rgb(0xef4444)
+        };
+
         v_flex()
+            .id("showcase")
+            .overflow_scroll()
+            .h_full()
             .relative()
             .font_family(".SystemUIFont")
             .track_focus(&self.focus_handle(cx))
-            .p(rems(2.0))
-            .gap(rems(1.0))
+            .bg(rgb(0xf8fafc))
+            .min_h_full()
+            .p(rems(3.0))
+            .gap(rems(2.5))
+
             .child(
-                button("more")
-                    .bg(rgb(0xFFFFFF))
-                    .w(rems(10.0))
-                    .h(rems(2.0))
-                    .child(span("More").text_color(rgb(0x0000FF)))
-                    .on_click(cx.listener(Self::increment_progress))
-                    .when_disabled(|this| this.bg(rgb(0xCCCCCC))),
+                v_flex()
+                    .gap(rems(0.5))
+                    .child(
+                        span("🌟 lapislazuli Component Showcase")
+                            .text_size(rems(2.5))
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(rgb(0x1e293b))
+                    )
+                    .child(
+                        span("A headless component library for GPUI")
+                            .text_size(rems(1.1))
+                            .text_color(rgb(0x64748b))
+                    )
             )
+
             .child(
-                button("much more")
-                    .bg(rgb(0xFFFFFF))
-                    .w(rems(10.0))
-                    .h(rems(2.0))
-                    .disabled(self.disabled)
-                    .child(span("Much more").text_color(rgb(0xFF0000)))
-                    .on_click(|_event, _window, _app| {
-                        println!("Button 2 clicked!");
-                    })
-                    .when_disabled(|this| this.bg(rgb(0xCCCCCC))),
-            )
-            .child(
-                button("less")
-                    .bg(rgb(0xFFFFFF))
-                    .w(rems(10.0))
-                    .h(rems(2.0))
-                    .child(span("Less").text_color(rgb(0x0000FF)))
-                    .on_click(cx.listener(Self::decrement_progress))
-                    .when_disabled(|this| this.bg(rgb(0xCCCCCC))),
-            )
-            .child(separator().bg(rgb(0xbcbcbc)).when_horizontal_else(
-                |this| this.w(rems(10.)).h(px(1.)),
-                |this| this.h(rems(10.)).w(px(1.)),
-            ))
-            .child(
-                Progress::new()
-                    .flex_col()
-                    .flex()
-                    .h_full()
-                    .value(self.progress_value)
-                    .bg(rgb(0xEEEEEE))
-                    .w(rems(30.0))
-                    .p(rems(0.5))
-                    .value_label(|provider| {
-                        format!(
-                            "Tasks: {}/{}",
-                            provider.value() as u8,
-                            provider.max_value() as u8
-                        )
-                    })
-                    .child_with_context(|provider| {
-                        h_flex()
-                            .justify_between()
-                            .child(span("Progress").text_color(rgb(0x000000)))
-                            .child(span(provider.value_label()))
-                    })
-                    .child_with_context(|provider| {
-                        ProgressTrack::new()
-                            .bg(rgb(0xCCCCCC))
-                            .h(rems(1.0))
-                            .w_full()
+                h_flex()
+                    .gap(rems(1.5))
+                    .child(
+                        v_flex()
+                            .bg(rgb(0xffffff))
+                            .border_1()
+                            .border_color(rgb(0xe2e8f0))
+                            .rounded_lg()
+                            .p(rems(1.5))
+                            .gap(rems(0.5))
+                            .min_w(rems(8.0))
                             .child(
-                                ProgressFill::new()
-                                    .bg(rgb(0x00FF00))
-                                    .h(rems(1.0))
-                                    .w(relative(provider.percentage())),
+                                span("Progress")
+                                    .text_size(rems(0.9))
+                                    .text_color(rgb(0x64748b))
+                                    .font_weight(FontWeight::MEDIUM)
                             )
-                    }),
-            )
-            .child(
-                a("https://github.com/J0R6IT0/lapislazuli")
-                    .child("Source Code!!")
-                    .cursor_pointer()
-                    .text_color(rgb(0x0000FF)),
-            )
-            .child(
-                text_input(self.text_state.clone())
-                    .border_color(rgb(0x373737))
-                    .text_color(rgb(0xbab6be))
-                    .h(px(48.))
-                    .pr(px(16.))
-                    .pl(px(8.))
-                    .border_1()
-                    .max_w(rems(15.))
-                    .rounded_md()
-                    .gap(px(8.))
-                    .left_click_clear(true)
-                    .leading(
-                        button("search_leading")
-                            .on_click(cx.listener(Self::set_disabled))
                             .child(
-                                h_flex_center()
-                                    .h(px(32.))
-                                    .w(px(32.))
-                                    .bg(rgb(0x373737))
-                                    .line_height(px(16.))
-                                    .child(span("Ee").text_color(rgb(0xFFFFFF))),
-                            ),
-                    ),
+                                span(format!("{:.0}%", self.progress_value))
+                                    .text_size(rems(1.8))
+                                    .text_color(progress_color)
+                                    .font_weight(FontWeight::BOLD)
+                            )
+                    )
+                    .child(
+                        v_flex()
+                            .bg(rgb(0xffffff))
+                            .border_1()
+                            .border_color(rgb(0xe2e8f0))
+                            .rounded_lg()
+                            .p(rems(1.5))
+                            .gap(rems(0.5))
+                            .min_w(rems(8.0))
+                            .child(
+                                span("Button Clicks")
+                                    .text_size(rems(0.9))
+                                    .text_color(rgb(0x64748b))
+                                    .font_weight(FontWeight::MEDIUM)
+                            )
+                            .child(
+                                span(format!("{}", self.button_click_count))
+                                    .text_size(rems(1.8))
+                                    .text_color(rgb(0x3b82f6))
+                                    .font_weight(FontWeight::BOLD)
+                            )
+                    )
+                    .child(
+                        v_flex()
+                            .bg(rgb(0xffffff))
+                            .border_1()
+                            .border_color(rgb(0xe2e8f0))
+                            .rounded_lg()
+                            .p(rems(1.5))
+                            .gap(rems(0.5))
+                            .min_w(rems(8.0))
+                            .child(
+                                span("Status")
+                                    .text_size(rems(0.9))
+                                    .text_color(rgb(0x64748b))
+                                    .font_weight(FontWeight::MEDIUM)
+                            )
+                            .child(
+                                span(if self.disabled { "Disabled" } else { "Active" })
+                                    .text_size(rems(1.8))
+                                    .text_color(if self.disabled { rgb(0xef4444) } else { rgb(0x10b981) })
+                                    .font_weight(FontWeight::BOLD)
+                            )
+                    )
+            )
+
+            .child(
+                v_flex()
+                    .gap(rems(1.5))
+                    .child(
+                        span("🔘 Interactive Buttons")
+                            .text_size(rems(1.5))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(rgb(0x1e293b))
+                    )
+                    .child(
+                        v_flex()
+                            .bg(rgb(0xffffff))
+                            .border_1()
+                            .border_color(rgb(0xe2e8f0))
+                            .rounded_lg()
+                            .p(rems(2.0))
+                            .gap(rems(1.5))
+                            .child(
+                                span("Progress Controls")
+                                    .text_size(rems(1.1))
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_color(rgb(0x374151))
+                            )
+                            .child(
+                                h_flex()
+                                    .gap(rems(1.0))
+                                    .flex_wrap()
+                                    .child(
+                                        Button::new("increment")
+                                            .bg(rgb(0x3b82f6))
+                                            .hover(|this| this.bg(rgb(0x2563eb)))
+                                            .disabled(self.disabled)
+                                            .px(rems(1.5))
+                                            .py(rems(0.75))
+                                            .rounded_md()
+                                            .child(span("+ increase").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .on_click(cx.listener(Self::increment_progress))
+                                            .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
+                                    )
+                                    .child(
+                                        Button::new("decrement")
+                                            .bg(rgb(0xf59e0b))
+                                            .hover(|this| this.bg(rgb(0xd97706)))
+                                            .disabled(self.disabled)
+                                            .px(rems(1.5))
+                                            .py(rems(0.75))
+                                            .rounded_md()
+                                            .child(span("- decrease").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .on_click(cx.listener(Self::decrement_progress))
+                                            .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
+                                    )
+                                    .child(
+                                        Button::new("reset")
+                                            .bg(rgb(0xef4444))
+                                            .hover(|this| this.bg(rgb(0xdc2626)))
+                                            .disabled(self.disabled)
+                                            .px(rems(1.5))
+                                            .py(rems(0.75))
+                                            .rounded_md()
+                                            .child(span("reset").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .on_click(cx.listener(Self::reset_progress))
+                                            .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
+                                    )
+                                    .child(
+                                        Button::new("complete")
+                                            .bg(rgb(0x10b981))
+                                            .hover(|this| this.bg(rgb(0x059669)))
+                                            .disabled(self.disabled)
+                                            .px(rems(1.5))
+                                            .py(rems(0.75))
+                                            .rounded_md()
+                                            .child(span("complete").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .on_click(cx.listener(Self::complete_progress))
+                                            .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
+                                    )
+                            )
+                            .child(
+                                h_flex()
+                                    .gap(rems(1.0))
+                                    .child(
+                                        Button::new("toggle_disabled")
+                                            .bg(rgb(0x6366f1))
+                                            .hover(|this| this.bg(rgb(0x5b21b6)))
+                                            .px(rems(1.5))
+                                            .py(rems(0.75))
+                                            .rounded_md()
+                                            .child(
+                                                span(if self.disabled { "Enable Buttons" } else { "Disable Buttons" })
+                                                    .text_color(rgb(0xffffff))
+                                                    .font_weight(FontWeight::MEDIUM)
+                                            )
+                                            .on_click(cx.listener(Self::toggle_disabled))
+                                    )
+                                    .child(
+                                        Button::new("reset_counter")
+                                            .bg(rgb(0x64748b))
+                                            .hover(|this| this.bg(rgb(0x475569)))
+                                            .px(rems(1.5))
+                                            .py(rems(0.75))
+                                            .rounded_md()
+                                            .child(span("reset counter").text_color(rgb(0xffffff)).font_weight(FontWeight::MEDIUM))
+                                            .on_click(cx.listener(Self::reset_counter))
+                                    )
+                            )
+                    )
+            )
+
+            .child(Separator::new().bg(rgb(0xe2e8f0)).h(px(1.)).w_full())
+
+            .child(
+                v_flex()
+                    .gap(rems(1.5))
+                    .child(
+                        span("📊 Progress Indicators")
+                            .text_size(rems(1.5))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(rgb(0x1e293b))
+                    )
+                    .child(
+                        v_flex()
+                            .bg(rgb(0xffffff))
+                            .border_1()
+                            .border_color(rgb(0xe2e8f0))
+                            .rounded_lg()
+                            .p(rems(2.0))
+                            .gap(rems(1.5))
+                            .child(
+                                Progress::new()
+                                    .flex_col()
+                                    .flex()
+                                    .value(self.progress_value)
+                                    .bg(rgb(0xffffff))
+                                    .w_full()
+                                    .gap(rems(1.0))
+                                    .value_label(|provider| {
+                                        format!(
+                                            "{:.0}% complete ({}/100 tasks)",
+                                            provider.percentage(),
+                                            provider.value() as u8
+                                        )
+                                    })
+                                    .child_with_context(|provider| {
+                                        h_flex()
+                                            .justify_between()
+                                            .items_center()
+                                            .child(
+                                                span("Task Progress")
+                                                    .text_color(rgb(0x374151))
+                                                    .font_weight(FontWeight::MEDIUM)
+                                                    .text_size(rems(1.1))
+                                            )
+                                            .child(
+                                                span(provider.value_label())
+                                                    .text_color(rgb(0x64748b))
+                                                    .font_weight(FontWeight::MEDIUM)
+                                            )
+                                    })
+                                    .child_with_context(|provider| {
+                                        ProgressTrack::new()
+                                            .bg(rgb(0xf1f5f9))
+                                            .border_1()
+                                            .border_color(rgb(0xe2e8f0))
+                                            .h(rems(1.5))
+                                            .w_full()
+                                            .rounded_full()
+                                            .overflow_hidden()
+                                            .child(
+                                                ProgressFill::new()
+                                                    .bg(progress_color)
+                                                    .h_full()
+                                                    .rounded_full()
+                                                    .w(relative(provider.percentage()))
+                                            )
+                                    })
+                            )
+                    )
+            )
+
+            .child(Separator::new().bg(rgb(0xe2e8f0)).h(px(1.)).w_full())
+
+            .child(
+                v_flex()
+                    .gap(rems(1.5))
+                    .child(
+                        span("✏️ Text Input Components")
+                            .text_size(rems(1.5))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(rgb(0x1e293b))
+                    )
+                    .child(
+                        v_flex()
+                            .bg(rgb(0xffffff))
+                            .border_1()
+                            .border_color(rgb(0xe2e8f0))
+                            .rounded_lg()
+                            .p(rems(2.0))
+                            .gap(rems(1.0))
+                            .child(
+                                span("Interactive text input with search icon")
+                                    .text_color(rgb(0x64748b))
+                                    .text_size(rems(0.95))
+                            )
+                            .child(
+                                TextInput::new(self.text_state.clone())
+                                    .border_color(rgb(0xd1d5db))
+                                    .text_color(rgb(0x374151))
+                                    .bg(rgb(0xffffff))
+                                    .h(px(56.))
+                                    .pr(px(16.))
+                                    .pl(px(8.))
+                                    .border_2()
+                                    .max_w(rems(20.))
+                                    .rounded_lg()
+                                    .gap(px(12.))
+                                    .left_click_clear(true)
+                                    .leading(
+                                        Button::new("search_leading")
+                                            .on_click(cx.listener(Self::toggle_disabled))
+                                            .child(
+                                                h_flex_center()
+                                                    .h(px(40.))
+                                                    .w(px(40.))
+                                                    .bg(rgb(0x3b82f6))
+                                                    .hover(|this| this.bg(rgb(0x2563eb)))
+                                                    .rounded_md()
+                                                    .child(span("🔍").text_size(rems(1.2)))
+                                            )
+                                    )
+                            )
+                    )
+            )
+
+            .child(Separator::new().bg(rgb(0xe2e8f0)).h(px(1.)).w_full())
+
+            .child(
+                v_flex()
+                    .gap(rems(1.5))
+                    .child(
+                        span("🔗 Links & Resources")
+                            .text_size(rems(1.5))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(rgb(0x1e293b))
+                    )
+                    .child(
+                        v_flex()
+                            .bg(rgb(0xffffff))
+                            .border_1()
+                            .border_color(rgb(0xe2e8f0))
+                            .rounded_lg()
+                            .p(rems(2.0))
+                            .gap(rems(1.5))
+                            .child(
+                                h_flex()
+                                    .gap(rems(2.0))
+                                    .flex_wrap()
+                                    .child(
+                                        a("https://github.com/J0R6IT0/lapislazuli")
+                                            .bg(rgb(0x1f2937))
+                                            .hover(|this| this.bg(rgb(0x111827)))
+                                            .px(rems(1.5))
+                                            .py(rems(0.75))
+                                            .rounded_md()
+                                            .child("📦 View Source Code")
+                                            .text_color(rgb(0xffffff))
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_decoration_none()
+                                    )
+                                    .child(
+                                        a("https://github.com/zed-industries/zed/tree/main/crates/gpui")
+                                            .bg(rgb(0x059669))
+                                            .hover(|this| this.bg(rgb(0x047857)))
+                                            .px(rems(1.5))
+                                            .py(rems(0.75))
+                                            .rounded_md()
+                                            .child("🚀 GPUI Framework")
+                                            .text_color(rgb(0xffffff))
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_decoration_none()
+                                    )
+                            )
+                            .child(
+                                v_flex()
+                                    .gap(rems(0.5))
+                                    .child(
+                                        span("About lapislazuli")
+                                            .text_color(rgb(0x374151))
+                                            .font_weight(FontWeight::MEDIUM)
+                                    )
+                                    .child(
+                                        span("A headless component library for GPUI providing reusable building blocks for modern applications. Features buttons, progress indicators, text inputs, and layout primitives.")
+                                            .text_color(rgb(0x64748b))
+                                            .text_size(rems(0.9))
+                                            .line_height(rems(1.4))
+                                    )
+                            )
+                    )
             )
     }
 }

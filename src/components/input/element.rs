@@ -3,7 +3,7 @@ use gpui::*;
 
 pub const CURSOR_WIDTH: f32 = 1.0;
 const MARKED_TEXT_UNDERLINE_THICKNESS: f32 = 1.0;
-const SELECTION_COLOR: u32 = 0x3311ff;
+const SELECTION_COLOR: u32 = 0x3390FF80;
 
 /// A text input element that renders editable text with cursor and selection support.
 ///
@@ -161,7 +161,7 @@ impl TextElement {
                     bounds.bottom(),
                 ),
             ),
-            rgb(SELECTION_COLOR),
+            rgba(SELECTION_COLOR),
         )
     }
 }
