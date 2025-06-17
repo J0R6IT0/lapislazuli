@@ -1,12 +1,13 @@
 use gpui::*;
 use lapislazuli::{
-    Disableable,
+    Disableable, ParentElementWithContext,
     components::{
         button,
         input::{InputState, init},
-        progress, separator, text_input,
+        progress::{Progress, ProgressFill, ProgressTrack},
+        separator, text_input,
     },
-    primitives::{a, h_flex_center, span, v_flex},
+    primitives::{a, h_flex, h_flex_center, span, v_flex},
 };
 
 struct Showcase {
@@ -59,6 +60,7 @@ impl Showcase {
 impl Render for Showcase {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
+            .relative()
             .font_family(".SystemUIFont")
             .track_focus(&self.focus_handle(cx))
             .p(rems(2.0))
@@ -98,20 +100,38 @@ impl Render for Showcase {
                 |this| this.h(rems(10.)).w(px(1.)),
             ))
             .child(
-                progress()
-                    .bg(rgb(0xEEEEEE))
-                    .w(rems(10.0))
-                    .p(rems(0.5))
+                Progress::new()
+                    .flex_col()
+                    .flex()
+                    .h_full()
                     .value(self.progress_value)
-                    .child(span("Progress").text_color(rgb(0x000000)))
-                    .track(|track, _| {
-                        track
+                    .bg(rgb(0xEEEEEE))
+                    .w(rems(30.0))
+                    .p(rems(0.5))
+                    .value_label(|provider| {
+                        format!(
+                            "Tasks: {}/{}",
+                            provider.value() as u8,
+                            provider.max_value() as u8
+                        )
+                    })
+                    .child_with_context(|provider| {
+                        h_flex()
+                            .justify_between()
+                            .child(span("Progress").text_color(rgb(0x000000)))
+                            .child(span(provider.value_label()))
+                    })
+                    .child_with_context(|provider| {
+                        ProgressTrack::new()
                             .bg(rgb(0xCCCCCC))
                             .h(rems(1.0))
                             .w_full()
-                            .fill(|fill, progress| {
-                                fill.bg(rgb(0x00FF00)).h(rems(1.0)).w(relative(progress))
-                            })
+                            .child(
+                                ProgressFill::new()
+                                    .bg(rgb(0x00FF00))
+                                    .h(rems(1.0))
+                                    .w(relative(provider.percentage())),
+                            )
                     }),
             )
             .child(

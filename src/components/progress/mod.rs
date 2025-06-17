@@ -1,19 +1,21 @@
+use crate::components::progress::context::ProgressContext;
+use crate::traits::ParentElementWithContext;
 use gpui::*;
+use smallvec::SmallVec;
+use std::rc::Rc;
 
+mod context;
 mod fill;
 mod track;
 
 pub use fill::*;
-use smallvec::SmallVec;
 pub use track::*;
 
 #[derive(IntoElement)]
 pub struct Progress {
     base: Div,
-    value: f32,
-    min_value: f32,
-    max_value: f32,
     children: SmallVec<[AnyElement; 2]>,
+    state: ProgressContext,
 }
 
 impl Default for Progress {
@@ -25,44 +27,38 @@ impl Default for Progress {
 impl Progress {
     pub fn new() -> Self {
         Self {
-            base: div(),
-            value: 0.0,
-            min_value: 0.0,
-            max_value: 100.0,
+            base: div().relative(),
+
             children: SmallVec::new(),
+            state: ProgressContext {
+                value: 0.0,
+                min_value: 0.0,
+                max_value: 100.0,
+                value_label: None,
+            },
         }
     }
 
     pub fn value(mut self, value: f32) -> Self {
-        self.value = value;
+        self.state.value = value;
         self
     }
 
     pub fn min_value(mut self, min_value: f32) -> Self {
-        self.min_value = min_value;
+        self.state.min_value = min_value;
         self
     }
 
     pub fn max_value(mut self, max_value: f32) -> Self {
-        self.max_value = max_value;
+        self.state.max_value = max_value;
         self
     }
 
-    pub fn track<F>(mut self, builder: F) -> Self
+    pub fn value_label<F>(mut self, label_fn: F) -> Self
     where
-        F: Fn(ProgressTrack, f32) -> ProgressTrack,
+        F: Fn(&ProgressContext) -> String + 'static,
     {
-        let percentage = if self.max_value > self.min_value {
-            ((self.value - self.min_value) / (self.max_value - self.min_value)).clamp(0.0, 1.0)
-        } else {
-            0.0
-        };
-
-        let track = builder(
-            ProgressTrack::new(self.value, self.min_value, self.max_value),
-            percentage,
-        );
-        self.children.push(track.into_any_element());
+        self.state.value_label = Some(Rc::new(Box::new(label_fn)));
         self
     }
 }
@@ -76,6 +72,12 @@ impl ParentElement for Progress {
 impl Styled for Progress {
     fn style(&mut self) -> &mut StyleRefinement {
         self.base.style()
+    }
+}
+
+impl ParentElementWithContext<ProgressContext> for Progress {
+    fn get_context(&self) -> ProgressContext {
+        self.state.clone()
     }
 }
 

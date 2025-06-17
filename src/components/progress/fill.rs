@@ -6,8 +6,10 @@ pub struct ProgressFill {
 }
 
 impl ProgressFill {
-    pub(super) fn new() -> Self {
-        Self { base: div() }
+    pub fn new() -> Self {
+        Self {
+            base: div().relative(),
+        }
     }
 }
 
