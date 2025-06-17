@@ -60,8 +60,6 @@ impl Element for TextElement {
     ) -> Self::PrepaintState {
         let input = self.input.read(app);
         let content = input.value.clone();
-        let selected_range = input.selected_range.clone();
-        let cursor = input.cursor_offset();
         let style = window.text_style();
 
         let (display_text, text_color) = if content.is_empty() {
@@ -111,9 +109,21 @@ impl Element for TextElement {
             .text_system()
             .shape_line(display_text, font_size, &runs);
 
-        let scroll_offset = input.scroll_handle.offset();
-        let cursor_pos = line.x_for_index(cursor);
-        let (selection, cursor) = if selected_range.is_empty() {
+        // Drop input reference before calling auto_scroll_to_cursor
+        let _ = input;
+
+        // Handle auto-scrolling if needed
+        self.input.update(app, |input, cx| {
+            input.auto_scroll_to_cursor(&line, bounds, cx);
+        });
+
+        let scroll_offset = self.input.read(app).scroll_handle.offset();
+
+        // Get input reference again for cursor calculations
+        let input = self.input.read(app);
+        let cursor_pos = line.x_for_index(input.cursor_offset());
+
+        let (selection, cursor) = if input.selected_range.is_empty() {
             (
                 None,
                 Some(fill(
@@ -129,12 +139,13 @@ impl Element for TextElement {
                 Some(fill(
                     Bounds::from_corners(
                         point(
-                            bounds.left() + line.x_for_index(selected_range.start)
+                            bounds.left() + line.x_for_index(input.selected_range.start)
                                 - scroll_offset.x,
                             bounds.top(),
                         ),
                         point(
-                            bounds.left() + line.x_for_index(selected_range.end) - scroll_offset.x,
+                            bounds.left() + line.x_for_index(input.selected_range.end)
+                                - scroll_offset.x,
                             bounds.bottom(),
                         ),
                     ),

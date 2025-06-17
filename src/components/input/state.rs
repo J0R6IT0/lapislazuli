@@ -55,6 +55,7 @@ pub struct InputState {
     pub(super) last_bounds: Option<Bounds<Pixels>>,
     pub(super) selecting: bool,
     pub(super) scroll_handle: ScrollHandle,
+    pub(super) should_auto_scroll: bool,
 }
 
 impl InputState {
@@ -71,6 +72,7 @@ impl InputState {
             last_bounds: None,
             selecting: false,
             scroll_handle: ScrollHandle::new(),
+            should_auto_scroll: false,
         }
     }
 
@@ -121,7 +123,7 @@ impl InputState {
     pub(super) fn move_to(&mut self, offset: usize, cx: &mut Context<Self>) {
         let offset = offset.clamp(0, self.value.len());
         self.selected_range = offset..offset;
-        self.scroll_cursor_into_view(cx);
+        self.should_auto_scroll = true;
         cx.notify()
     }
 
@@ -290,7 +292,7 @@ impl InputState {
             self.selection_reversed = !self.selection_reversed;
             self.selected_range = self.selected_range.end..self.selected_range.start;
         }
-        self.scroll_cursor_into_view(cx);
+        self.should_auto_scroll = true;
         cx.notify()
     }
 
@@ -434,6 +436,7 @@ impl InputState {
         self.last_layout = None;
         self.last_bounds = None;
         self.selecting = false;
+        self.should_auto_scroll = true;
         cx.notify();
     }
 
@@ -462,8 +465,9 @@ impl InputState {
             offset.x = offset.x.max(px(0.0));
 
             // Don't allow scrolling past the end if text is longer than visible area
+            // but allow a small margin for cursor visibility
             if text_width > visible_width {
-                offset.x = offset.x.min(text_width - visible_width);
+                offset.x = offset.x.min(text_width - visible_width + px(1.0));
             } else {
                 offset.x = px(0.0);
             }
@@ -479,11 +483,17 @@ impl InputState {
         cx.notify();
     }
 
-    fn scroll_cursor_into_view(&mut self, cx: &mut Context<Self>) {
-        let (Some(layout), Some(bounds)) = (self.last_layout.as_ref(), self.last_bounds.as_ref())
-        else {
+    pub(super) fn auto_scroll_to_cursor(
+        &mut self,
+        layout: &ShapedLine,
+        bounds: Bounds<Pixels>,
+        _cx: &mut Context<Self>,
+    ) {
+        if !self.should_auto_scroll {
             return;
-        };
+        }
+
+        self.should_auto_scroll = false; // Reset the flag
 
         let cursor_offset = self.cursor_offset();
         let cursor_x = layout.x_for_index(cursor_offset);
@@ -496,16 +506,16 @@ impl InputState {
 
         // If cursor is to the left of visible area, scroll left
         if cursor_x < visible_left {
-            new_scroll_x = (cursor_x).max(px(0.0));
+            new_scroll_x = cursor_x.max(px(0.0));
         }
         // If cursor is to the right of visible area, scroll right
         else if cursor_x >= visible_right {
-            new_scroll_x = cursor_x - visible_width + px(1.0); // Account for cursor width
+            new_scroll_x = cursor_x - visible_width + px(1.0);
         }
 
         if new_scroll_x != current_scroll.x {
             let new_offset = point(new_scroll_x, current_scroll.y);
-            self.update_scroll_offset(Some(new_offset), cx);
+            self.scroll_handle.set_offset(new_offset);
         }
     }
 }
@@ -566,6 +576,7 @@ impl EntityInputHandler for InputState {
             (self.value[0..range.start].to_owned() + new_text + &self.value[range.end..]).into();
         self.selected_range = range.start + new_text.len()..range.start + new_text.len();
         self.marked_range.take();
+        self.should_auto_scroll = true;
         cx.notify();
     }
 
