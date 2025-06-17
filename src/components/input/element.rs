@@ -46,7 +46,6 @@ impl Element for TextElement {
     ) -> (LayoutId, Self::RequestLayoutState) {
         let mut style = Style::default();
         style.size.width = relative(1.).into();
-
         style.size.height = (window.line_height()).into();
         (window.request_layout(style, [], app), ())
     }
@@ -112,13 +111,14 @@ impl Element for TextElement {
             .text_system()
             .shape_line(display_text, font_size, &runs);
 
+        let scroll_offset = input.scroll_handle.offset();
         let cursor_pos = line.x_for_index(cursor);
         let (selection, cursor) = if selected_range.is_empty() {
             (
                 None,
                 Some(fill(
                     Bounds::new(
-                        point(bounds.left() + cursor_pos, bounds.top()),
+                        point(bounds.left() + cursor_pos - scroll_offset.x, bounds.top()),
                         size(px(1.), bounds.bottom() - bounds.top()),
                     ),
                     text_color,
@@ -129,11 +129,12 @@ impl Element for TextElement {
                 Some(fill(
                     Bounds::from_corners(
                         point(
-                            bounds.left() + line.x_for_index(selected_range.start),
+                            bounds.left() + line.x_for_index(selected_range.start)
+                                - scroll_offset.x,
                             bounds.top(),
                         ),
                         point(
-                            bounds.left() + line.x_for_index(selected_range.end),
+                            bounds.left() + line.x_for_index(selected_range.end) - scroll_offset.x,
                             bounds.bottom(),
                         ),
                     ),
@@ -169,7 +170,8 @@ impl Element for TextElement {
             window.paint_quad(selection)
         }
         let line = prepaint.line.take().unwrap();
-        let text_origin = point(bounds.origin.x, bounds.origin.y);
+        let scroll_offset = self.input.read(app).scroll_handle.offset();
+        let text_origin = point(bounds.origin.x - scroll_offset.x, bounds.origin.y);
         line.paint(text_origin, window.line_height(), window, app)
             .unwrap();
 

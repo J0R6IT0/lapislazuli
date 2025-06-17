@@ -91,6 +91,7 @@ impl RenderOnce for TextInput {
                     window.listener_for(&self.state, InputState::left_click_clear),
                 )
             })
+            .on_scroll_wheel(window.listener_for(&self.state, InputState::on_scroll_wheel))
             .when_some(self.leading, |this, leading| this.child(leading))
             .child(self.state.clone())
     }

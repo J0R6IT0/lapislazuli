@@ -54,6 +54,7 @@ pub struct InputState {
     pub(super) last_layout: Option<ShapedLine>,
     pub(super) last_bounds: Option<Bounds<Pixels>>,
     pub(super) selecting: bool,
+    pub(super) scroll_handle: ScrollHandle,
 }
 
 impl InputState {
@@ -69,6 +70,7 @@ impl InputState {
             last_layout: None,
             last_bounds: None,
             selecting: false,
+            scroll_handle: ScrollHandle::new(),
         }
     }
 
@@ -119,6 +121,7 @@ impl InputState {
     pub(super) fn move_to(&mut self, offset: usize, cx: &mut Context<Self>) {
         let offset = offset.clamp(0, self.value.len());
         self.selected_range = offset..offset;
+        self.scroll_cursor_into_view(cx);
         cx.notify()
     }
 
@@ -258,7 +261,8 @@ impl InputState {
         if position.y > bounds.bottom() {
             return self.value.len();
         }
-        line.closest_index_for_x(position.x - bounds.left())
+        let scroll_offset = self.scroll_handle.offset();
+        line.closest_index_for_x(position.x - bounds.left() + scroll_offset.x)
     }
 
     fn offset_from_utf16(&self, offset: usize) -> usize {
@@ -286,6 +290,7 @@ impl InputState {
             self.selection_reversed = !self.selection_reversed;
             self.selected_range = self.selected_range.end..self.selected_range.start;
         }
+        self.scroll_cursor_into_view(cx);
         cx.notify()
     }
 
@@ -430,6 +435,78 @@ impl InputState {
         self.last_bounds = None;
         self.selecting = false;
         cx.notify();
+    }
+
+    pub(super) fn on_scroll_wheel(
+        &mut self,
+        event: &ScrollWheelEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let delta = event.delta.pixel_delta(window.line_height());
+        let current_offset = self.scroll_handle.offset();
+        let new_offset = current_offset + delta;
+        self.update_scroll_offset(Some(new_offset), cx);
+    }
+
+    fn update_scroll_offset(&mut self, offset: Option<Point<Pixels>>, cx: &mut Context<Self>) {
+        let mut offset = offset.unwrap_or(self.scroll_handle.offset());
+
+        // Constrain horizontal scrolling to prevent scrolling beyond text bounds
+        if let (Some(layout), Some(bounds)) = (self.last_layout.as_ref(), self.last_bounds.as_ref())
+        {
+            let text_width = layout.width;
+            let visible_width = bounds.size.width;
+
+            // Don't allow scrolling past the beginning
+            offset.x = offset.x.max(px(0.0));
+
+            // Don't allow scrolling past the end if text is longer than visible area
+            if text_width > visible_width {
+                offset.x = offset.x.min(text_width - visible_width);
+            } else {
+                offset.x = px(0.0);
+            }
+        } else {
+            // If no layout info, constrain to non-negative values
+            offset.x = offset.x.max(px(0.0));
+        }
+
+        // Disable vertical scrolling for single-line input
+        offset.y = px(0.0);
+
+        self.scroll_handle.set_offset(offset);
+        cx.notify();
+    }
+
+    fn scroll_cursor_into_view(&mut self, cx: &mut Context<Self>) {
+        let (Some(layout), Some(bounds)) = (self.last_layout.as_ref(), self.last_bounds.as_ref())
+        else {
+            return;
+        };
+
+        let cursor_offset = self.cursor_offset();
+        let cursor_x = layout.x_for_index(cursor_offset);
+        let current_scroll = self.scroll_handle.offset();
+        let visible_width = bounds.size.width;
+        let visible_left = current_scroll.x;
+        let visible_right = current_scroll.x + visible_width;
+
+        let mut new_scroll_x = current_scroll.x;
+
+        // If cursor is to the left of visible area, scroll left
+        if cursor_x < visible_left {
+            new_scroll_x = (cursor_x).max(px(0.0));
+        }
+        // If cursor is to the right of visible area, scroll right
+        else if cursor_x >= visible_right {
+            new_scroll_x = cursor_x - visible_width + px(1.0); // Account for cursor width
+        }
+
+        if new_scroll_x != current_scroll.x {
+            let new_offset = point(new_scroll_x, current_scroll.y);
+            self.update_scroll_offset(Some(new_offset), cx);
+        }
     }
 }
 
