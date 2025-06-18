@@ -394,6 +394,7 @@ impl InputState {
         self.last_bounds = None;
         self.selecting = false;
         self.should_auto_scroll = true;
+        self.scroll_handle.set_offset(point(px(0.0), px(0.0)));
         cx.notify();
     }
 
@@ -545,7 +546,7 @@ impl InputState {
         if let (Some(layout), Some(bounds)) = (self.last_layout.as_ref(), self.last_bounds.as_ref())
         {
             let text_width = layout.width;
-            let visible_width = bounds.size.width;
+            let visible_width = bounds.size.width - px(CURSOR_WIDTH);
 
             offset.x = offset.x.max(px(0.0));
 
@@ -581,7 +582,8 @@ impl InputState {
         let cursor_offset = self.cursor_offset();
         let cursor_x = layout.x_for_index(cursor_offset);
         let current_scroll = self.scroll_handle.offset();
-        let visible_width = bounds.size.width;
+        let visible_width = bounds.size.width - px(CURSOR_WIDTH);
+        let text_width = layout.width;
         let visible_left = current_scroll.x;
         let visible_right = current_scroll.x + visible_width;
 
@@ -589,8 +591,19 @@ impl InputState {
 
         if cursor_x < visible_left {
             new_scroll_x = cursor_x.max(px(0.0));
-        } else if cursor_x + px(CURSOR_WIDTH) >= visible_right {
-            new_scroll_x = cursor_x - visible_width + px(CURSOR_WIDTH);
+        } else if cursor_x >= visible_right {
+            new_scroll_x = cursor_x - visible_width;
+        }
+
+        // Ensure no blank space is shown when text fits or becomes shorter
+        if text_width <= visible_width {
+            // Text fits entirely, show from beginning
+            new_scroll_x = px(0.0);
+        } else {
+            // Text is longer than visible area
+            // Ensure we don't scroll past the end, leaving blank space
+            let max_scroll = text_width - visible_width;
+            new_scroll_x = new_scroll_x.min(max_scroll).max(px(0.0));
         }
 
         if new_scroll_x != current_scroll.x {
@@ -860,6 +873,9 @@ impl EntityInputHandler for InputState {
         self.selected_range = new_cursor_pos..new_cursor_pos;
         self.marked_range = None;
         self.should_auto_scroll = true;
+        self.last_layout = None;
+        self.last_bounds = None;
+
         self.update_scroll_offset(None, cx);
     }
 

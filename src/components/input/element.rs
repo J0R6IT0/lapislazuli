@@ -47,13 +47,6 @@ impl TextElement {
         style
     }
 
-    /// Paints the text selection if it exists
-    fn paint_selection(&self, window: &mut Window, prepaint: &mut PrepaintState) {
-        if let Some(selection) = prepaint.selection.take() {
-            window.paint_quad(selection);
-        }
-    }
-
     /// Paints the text line at the specified origin
     fn paint_text(
         &self,
@@ -64,21 +57,6 @@ impl TextElement {
     ) {
         line.paint(text_origin, window.line_height(), window, app)
             .unwrap();
-    }
-
-    /// Paints the cursor if the input is focused and cursor is visible
-    fn paint_cursor(
-        &self,
-        focus_handle: &FocusHandle,
-        window: &mut Window,
-        app: &App,
-        prepaint: &mut PrepaintState,
-    ) {
-        if focus_handle.is_focused(window) && self.input.read(app).cursor_visible(window, app) {
-            if let Some(cursor) = prepaint.cursor.take() {
-                window.paint_quad(cursor);
-            }
-        }
     }
 
     /// Prepares the display text and color based on content and placeholder
@@ -218,14 +196,12 @@ impl Element for TextElement {
             .text_system()
             .shape_line(display_text, font_size, &runs);
 
-        let _ = input;
-
         self.input.update(app, |input, cx| {
             input.auto_scroll_to_cursor(&line, bounds, cx);
         });
 
-        let scroll_offset = self.input.read(app).scroll_handle.offset();
         let input = self.input.read(app);
+        let scroll_offset = input.scroll_handle.offset();
         let cursor_pos = line.x_for_index(input.cursor_offset());
 
         let (selection, cursor) = if input.selected_range.is_empty() {
@@ -269,14 +245,20 @@ impl Element for TextElement {
             app,
         );
 
-        self.paint_selection(window, prepaint);
+        if let Some(selection) = prepaint.selection.take() {
+            window.paint_quad(selection);
+        }
 
         let line = prepaint.line.take().unwrap();
         let scroll_offset = self.input.read(app).scroll_handle.offset();
         let text_origin = point(bounds.origin.x - scroll_offset.x, bounds.origin.y);
         self.paint_text(line.clone(), text_origin, window, app);
 
-        self.paint_cursor(&focus_handle, window, app, prepaint);
+        if focus_handle.is_focused(window) && self.input.read(app).cursor_visible(window, app) {
+            if let Some(cursor) = prepaint.cursor.take() {
+                window.paint_quad(cursor);
+            }
+        }
 
         self.input.update(app, |input, _cx| {
             input.last_layout = Some(line);
