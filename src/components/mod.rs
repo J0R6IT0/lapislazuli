@@ -4,6 +4,7 @@ pub mod input;
 pub mod progress;
 mod separator;
 mod switch;
+pub mod tabs;
 
 pub use button::Button;
 pub use checkbox::Checkbox;

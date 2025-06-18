@@ -34,6 +34,7 @@ pub struct Checkbox {
     disabled: bool,
     checked: bool,
     on_change: Option<Box<dyn Fn(&bool, &mut Window, &mut App) + 'static>>,
+    when_checked_handler: Option<Box<dyn FnOnce(Self) -> Self>>,
     indicator: AnyElement,
 }
 
@@ -58,6 +59,7 @@ impl Checkbox {
             checked: false,
             indicator: div().into_any_element(),
             on_change: None,
+            when_checked_handler: None,
         }
     }
 
@@ -100,7 +102,7 @@ impl Checkbox {
     /// Conditionally applies styling or modifications when the checkbox is checked.
     ///
     /// This method allows you to apply different styles or properties based on the
-    /// checked state. The handler function is only called if the checkbox is currently checked.
+    /// checked state.
     ///
     /// # Arguments
     ///
@@ -113,8 +115,9 @@ impl Checkbox {
     ///     .checked(true)
     ///     .when_checked(|this| this.bg(rgb(0x3b82f6)).border_color(rgb(0x1d4ed8)));
     /// ```
-    pub fn when_checked(self, handler: impl FnOnce(Self) -> Self) -> Self {
-        if self.checked { handler(self) } else { self }
+    pub fn when_checked(mut self, handler: impl FnOnce(Self) -> Self + 'static) -> Self {
+        self.when_checked_handler = Some(Box::new(handler));
+        self
     }
 
     /// Sets a callback function that is called when the checkbox state changes.
@@ -173,7 +176,13 @@ impl InteractiveElement for Checkbox {
 }
 
 impl RenderOnce for Checkbox {
-    fn render(self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
+    fn render(mut self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
+        if self.checked {
+            if let Some(handler) = self.when_checked_handler.take() {
+                self = handler(self);
+            }
+        }
+
         self.base
             .when_some(
                 self.on_change.filter(|_| !self.disabled),

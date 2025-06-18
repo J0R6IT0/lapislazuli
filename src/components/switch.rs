@@ -46,6 +46,7 @@ pub struct Switch {
     checked: bool,
     on_change: Option<Box<dyn Fn(&bool, &mut Window, &mut App) + 'static>>,
     thumb: SwitchThumb,
+    when_checked_handler: Option<Box<dyn FnOnce(Self) -> Self>>,
 }
 
 impl Switch {
@@ -69,6 +70,7 @@ impl Switch {
             checked: false,
             on_change: None,
             thumb: SwitchThumb::new(),
+            when_checked_handler: None,
         }
     }
 
@@ -111,7 +113,7 @@ impl Switch {
     /// Conditionally applies styling or modifications when the switch is checked.
     ///
     /// This method allows you to apply different styles or properties based on the
-    /// checked state. The handler function is only called if the switch is currently checked.
+    /// checked state.
     ///
     /// # Arguments
     ///
@@ -124,8 +126,9 @@ impl Switch {
     ///     .checked(true)
     ///     .when_checked(|this| this.bg(rgb(0x10b981)).border_color(rgb(0x059669)));
     /// ```
-    pub fn when_checked(self, handler: impl FnOnce(Self) -> Self) -> Self {
-        if self.checked { handler(self) } else { self }
+    pub fn when_checked(mut self, handler: impl FnOnce(Self) -> Self + 'static) -> Self {
+        self.when_checked_handler = Some(Box::new(handler));
+        self
     }
 
     /// Sets a callback function that is called when the switch state changes.
@@ -184,7 +187,13 @@ impl InteractiveElement for Switch {
 }
 
 impl RenderOnce for Switch {
-    fn render(self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
+    fn render(mut self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
+        if self.checked {
+            if let Some(handler) = self.when_checked_handler.take() {
+                self = handler(self);
+            }
+        }
+
         self.base
             .when_some(
                 self.on_change.filter(|_| !self.disabled),

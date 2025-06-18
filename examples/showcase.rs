@@ -7,6 +7,7 @@ use lapislazuli::{
         Button, Checkbox, Separator, Switch,
         input::{InputState, TextInput, init},
         progress::{Progress, ProgressFill, ProgressTrack},
+        tabs::{Tabs, TabsTrigger},
     },
     primitives::{a, h_flex, h_flex_center, span, v_flex},
 };
@@ -18,6 +19,7 @@ struct Showcase {
     focus_handle: FocusHandle,
     disabled: bool,
     button_click_count: u32,
+    selected_tab_index: usize,
 }
 
 impl Focusable for Showcase {
@@ -43,6 +45,7 @@ impl Showcase {
             previous_progress_value: 65.0,
             disabled: false,
             button_click_count: 0,
+            selected_tab_index: 0,
         })
     }
 
@@ -115,7 +118,6 @@ impl Render for Showcase {
             .min_h_full()
             .p(rems(3.0))
             .gap(rems(2.5))
-
             .child(
                 v_flex()
                     .gap(rems(0.5))
@@ -131,7 +133,75 @@ impl Render for Showcase {
                             .text_color(rgb(0x64748b))
                     )
             )
-
+            .child(
+                v_flex()
+                    .gap(rems(1.5))
+                    .child(
+                        span("Tabs Component")
+                            .text_size(rems(1.5))
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(rgb(0x1e293b))
+                    )
+                    .child(
+                        Tabs::new("showcase-tabs")
+                            .value(self.selected_tab_index)
+                            .list(|list| {
+                                list.trigger(
+                                    TabsTrigger::new()
+                                        .child(span("Overview"))
+                                        .px(rems(1.0))
+                                        .py(rems(0.5))
+                                        .border_b_2()
+                                        .border_color(rgba(0x00000000))
+                                        .text_color(rgb(0x64748b))
+                                        .when_selected(|this| {this.border_color(rgb(0x3b82f6)).text_color(rgb(0x3b82f6))})
+                                )
+                                .trigger(
+                                    TabsTrigger::new()
+                                        .child(span("Components"))
+                                        .px(rems(1.0))
+                                        .py(rems(0.5))
+                                        .border_b_2()
+                                        .border_color(rgba(0x00000000))
+                                        .text_color(rgb(0x64748b))
+                                        .when_selected(|this| {this.border_color(rgb(0x3b82f6)).text_color(rgb(0x3b82f6))})
+                                )
+                                .trigger(
+                                    TabsTrigger::new()
+                                        .child(span("Settings"))
+                                        .px(rems(1.0))
+                                        .py(rems(0.5))
+                                        .border_b_2()
+                                        .border_color(rgba(0x00000000))
+                                        .text_color(rgb(0x64748b))
+                                        .when_selected(|this| {this.border_color(rgb(0x3b82f6)).text_color(rgb(0x3b82f6))})
+                                )
+                            })
+                            .on_click(cx.listener(|this, index, _window, _cx| {
+                                this.selected_tab_index = *index;
+                            }))
+                    )
+                    .child(
+                        match self.selected_tab_index {
+                            0 => v_flex()
+                                .gap(rems(1.0))
+                                .child(span("Welcome to the lapislazuli showcase!").text_color(rgb(0x1e293b)))
+                                .child(span("This is a headless component library for GPUI.").text_color(rgb(0x64748b)))
+                                .into_any_element(),
+                            1 => v_flex()
+                                .gap(rems(1.0))
+                                .child(span("Components Tab").text_color(rgb(0x1e293b)))
+                                .child(span("Here you can see all the available components.").text_color(rgb(0x64748b)))
+                                .into_any_element(),
+                            2 => v_flex()
+                                .gap(rems(1.0))
+                                .child(span("Settings Tab").text_color(rgb(0x1e293b)))
+                                .child(span("Configure your preferences here.").text_color(rgb(0x64748b)))
+                                .into_any_element(),
+                            _ => v_flex().into_any_element(),
+                        }
+                    )
+            )
             .child(
                 h_flex()
                     .gap(rems(1.5))
