@@ -1,15 +1,14 @@
-use std::rc::Rc;
-
 use crate::{Selectable, components::tabs::TabsTrigger, primitives::h_flex};
 use gpui::{prelude::FluentBuilder, *};
 use smallvec::SmallVec;
+use std::rc::Rc;
 
 #[derive(IntoElement)]
 pub struct TabsList {
     base: Div,
     triggers: SmallVec<[TabsTrigger; 1]>,
     pub(super) selected_index: Option<usize>,
-    pub(super) on_click: Option<Rc<dyn Fn(&usize, &mut Window, &mut App)>>,
+    pub(super) on_change: Option<Rc<dyn Fn(&usize, &mut Window, &mut App)>>,
 }
 
 impl TabsList {
@@ -18,7 +17,7 @@ impl TabsList {
             base: h_flex(),
             triggers: SmallVec::new(),
             selected_index: None,
-            on_click: None,
+            on_change: None,
         }
     }
 
@@ -49,7 +48,7 @@ impl RenderOnce for TabsList {
                     .when_some(self.selected_index, |this, selected_ix| {
                         this.selected(selected_ix == ix)
                     })
-                    .when_some(self.on_click.clone(), move |this, on_click| {
+                    .when_some(self.on_change.clone(), move |this, on_click| {
                         this.on_click(move |_, window, cx| on_click(&ix, window, cx))
                     })
             }))

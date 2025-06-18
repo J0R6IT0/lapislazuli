@@ -16,7 +16,7 @@ impl_internal_actions!(tab_bar, [SelectTab]);
 pub struct Tabs {
     base: Stateful<Div>,
     list: TabsList,
-    on_click: Option<Rc<dyn Fn(&usize, &mut Window, &mut App) + 'static>>,
+    on_change: Option<Rc<dyn Fn(&usize, &mut Window, &mut App) + 'static>>,
     value: Option<usize>,
 }
 
@@ -25,7 +25,7 @@ impl Tabs {
         Self {
             base: div().id(id),
             list: TabsList::new(),
-            on_click: None,
+            on_change: None,
             value: None,
         }
     }
@@ -41,9 +41,12 @@ impl Tabs {
         self
     }
 
-    pub fn on_click(mut self, on_click: impl Fn(&usize, &mut Window, &mut App) + 'static) -> Self {
-        self.on_click = Some(Rc::new(on_click));
-        self.list.on_click = self.on_click.clone();
+    pub fn on_change(
+        mut self,
+        on_change: impl Fn(&usize, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_change = Some(Rc::new(on_change));
+        self.list.on_change = self.on_change.clone();
         self
     }
 }
@@ -58,7 +61,7 @@ impl RenderOnce for Tabs {
     fn render(self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
         self.base
             .on_action({
-                let on_click = self.on_click;
+                let on_click = self.on_change;
                 move |action: &SelectTab, window, app| {
                     if let Some(on_click) = on_click.clone() {
                         on_click(&action.0, window, app);

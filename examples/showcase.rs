@@ -146,7 +146,8 @@ impl Render for Showcase {
                         Tabs::new("showcase-tabs")
                             .value(self.selected_tab_index)
                             .list(|list| {
-                                list.trigger(
+                                list
+                                    .trigger(
                                     TabsTrigger::new()
                                         .child(span("Overview"))
                                         .px(rems(1.0))
@@ -177,7 +178,7 @@ impl Render for Showcase {
                                         .when_selected(|this| {this.border_color(rgb(0x3b82f6)).text_color(rgb(0x3b82f6))})
                                 )
                             })
-                            .on_click(cx.listener(|this, index, _window, _cx| {
+                            .on_change(cx.listener(|this, index, _window, _cx| {
                                 this.selected_tab_index = *index;
                             }))
                     )
