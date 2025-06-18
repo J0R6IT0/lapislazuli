@@ -4,7 +4,7 @@ use gpui::*;
 use lapislazuli::{
     Disableable, ParentElementWithContext,
     components::{
-        Button, Checkbox, Separator,
+        Button, Checkbox, Separator, Switch,
         input::{InputState, TextInput, init},
         progress::{Progress, ProgressFill, ProgressTrack},
     },
@@ -101,6 +101,8 @@ impl Render for Showcase {
         } else {
             rgb(0xef4444)
         };
+
+        let disabled = self.disabled;
 
         v_flex()
             .id("showcase")
@@ -301,6 +303,32 @@ impl Render for Showcase {
                                                         .size(rems(1.5))
                                                         .when_checked(|this| this.bg(rgb(0x6366f1)))
                                             )
+                                            .child(Switch::new("switch")
+                                                .rounded_3xl()
+                                                .checked(self.disabled)
+                                                .items_center()
+                                                .on_change(cx.listener(Self::set_disabled))
+                                                .border_1()
+                                                .px(px(2.))
+                                                .border_color(rgb(0xe2e8f0))
+                                                .thumb(|thumb| thumb.rounded_full().size(rems(1.)).bg(rgb(0xacacac)))
+                                                .h(px(24.))
+                                                .w(px(44.))
+                                                .when_checked(|this|
+                                                    this.thumb(|thumb|
+                                                            thumb.bg(rgb(0xffffff)))
+                                                        .bg(rgb(0x10b981)))
+                                                .with_animation(("checkbox", self.disabled as u32), Animation::new(Duration::from_millis(100)), move |this, delta| {
+                                                    this.thumb(|thumb| {
+                                                        if disabled {
+                                                            thumb.left(px( delta * 21.))
+
+                                                        } else {
+                                                            thumb.left(px(21. - delta * 21.))
+                                                        }
+                                                    })
+                                                })
+                                            )
                                             .child(
                                                 span("Disable Controls")
                                                     .text_color(rgb(0x374151))
@@ -453,7 +481,6 @@ impl Render for Showcase {
                                     .max_w(rems(20.))
                                     .rounded_lg()
                                     .gap(px(12.))
-                                    .left_click_clear(true)
                                     .leading(
                                         Button::new("search_leading")
                                             .on_click(cx.listener(Self::toggle_disabled))

@@ -506,16 +506,6 @@ impl InputState {
         }
     }
 
-    /// Clear input on left click (utility method)
-    pub(super) fn left_click_clear(
-        &mut self,
-        _: &MouseDownEvent,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.clear(&Clear, window, cx);
-    }
-
     // ============================================================================
     // System Integration
     // ============================================================================
