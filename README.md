@@ -12,6 +12,7 @@ In it's current state it is pretty much a proof of concept and should not be use
 - progress
 - separator
 - switch
+- tabs
 - text input
 
 ## acknowledgements
