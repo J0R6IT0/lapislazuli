@@ -533,7 +533,7 @@ impl InputState {
     ) {
         let delta = event.delta.pixel_delta(window.line_height());
         let current_offset = self.scroll_handle.offset();
-        let new_offset = current_offset + delta;
+        let new_offset = current_offset - delta;
         self.update_scroll_offset(Some(new_offset), cx);
     }
 
@@ -900,8 +900,6 @@ impl EntityInputHandler for InputState {
                 let new_pos = range.start + new_text.len();
                 new_pos..new_pos
             });
-
-        cx.notify();
     }
 
     fn bounds_for_range(
