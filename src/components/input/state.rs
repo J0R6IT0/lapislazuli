@@ -900,6 +900,7 @@ impl EntityInputHandler for InputState {
                 let new_pos = range.start + new_text.len();
                 new_pos..new_pos
             });
+        cx.notify();
     }
 
     fn bounds_for_range(
