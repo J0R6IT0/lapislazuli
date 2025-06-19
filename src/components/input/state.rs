@@ -117,6 +117,7 @@ pub struct InputState {
     pub(super) scroll_handle: ScrollHandle,
     pub(super) should_auto_scroll: bool,
     pub(super) cursor: Entity<Cursor>,
+    _subscriptions: Vec<Subscription>,
 }
 
 impl InputState {
@@ -129,23 +130,21 @@ impl InputState {
         let cursor = cx.new(|_| Cursor::new());
         let focus_handle = cx.focus_handle();
 
-        cx.observe(&cursor, |_, _, cx| cx.notify()).detach();
-        cx.observe_window_activation(window, |input, window, cx| {
-            if window.is_window_active() {
-                let focus_handle = input.focus_handle.clone();
-                if focus_handle.is_focused(window) {
-                    input.cursor.update(cx, |cursor, cx| {
-                        cursor.start(cx);
-                    });
-                    return;
+        let _subscriptions = vec![
+            cx.observe(&cursor, |_, _, cx| cx.notify()),
+            cx.observe_window_activation(window, |input, window, cx| {
+                if window.is_window_active() {
+                    let focus_handle = input.focus_handle.clone();
+                    if focus_handle.is_focused(window) {
+                        input.cursor.update(cx, |cursor, cx| {
+                            cursor.start(cx);
+                        });
+                    }
                 }
-            }
-            input.cursor.update(cx, |cursor, cx| {
-                cursor.stop(cx);
-            });
-        })
-        .detach();
-        cx.on_focus(&focus_handle, window, Self::on_focus).detach();
+            }),
+            cx.on_focus(&focus_handle, window, Self::on_focus),
+            cx.on_blur(&focus_handle, window, Self::on_blur),
+        ];
 
         Self {
             focus_handle,
@@ -161,6 +160,7 @@ impl InputState {
             scroll_handle: ScrollHandle::new(),
             should_auto_scroll: false,
             cursor,
+            _subscriptions,
         }
     }
 
@@ -182,10 +182,16 @@ impl InputState {
         self
     }
 
-    fn on_focus(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+    fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.cursor.update(cx, |cursor, cx| {
             cursor.start(cx);
         });
+    }
+
+    fn on_blur(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        self.cursor.update(cx, |cursor, cx| {
+            cursor.stop(cx);
+        })
     }
 
     fn pause_cursor_blink(&mut self, cx: &mut Context<Self>) {
@@ -532,6 +538,7 @@ impl InputState {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        cx.stop_propagation();
         let delta = event.delta.pixel_delta(window.line_height());
         let current_offset = self.scroll_handle.offset();
         let new_offset = current_offset - delta;
