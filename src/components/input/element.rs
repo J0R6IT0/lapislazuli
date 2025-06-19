@@ -61,23 +61,13 @@ impl TextElement {
 
     /// Prepares the display text and color based on content and placeholder
     fn prepare_display_text(&self, input: &InputState, text_color: Hsla) -> (SharedString, Hsla) {
-        if input.value.is_empty() {
-            (input.placeholder.clone(), input.placeholder_color)
-        } else if input.is_masked() {
-            let committed_char_count = if let Some(marked_range) = &input.marked_range {
-                // Count characters before and after marked range separately
-                let before_count = input.value[..marked_range.start].chars().count();
-                let after_count = input.value[marked_range.end..].chars().count();
-                before_count + after_count
-            } else {
-                input.value.chars().count()
-            };
-
-            let value = "*".repeat(committed_char_count);
-            (value.into(), text_color)
+        let display_text = input.display_text();
+        let color = if input.value.is_empty() {
+            input.placeholder_color
         } else {
-            (input.value.clone(), text_color)
-        }
+            text_color
+        };
+        (display_text, color)
     }
 
     /// Creates text runs with proper styling including marked text underlines
@@ -232,7 +222,7 @@ impl Element for TextElement {
 
         let input = self.input.read(app);
         let scroll_offset = input.scroll_handle.offset();
-        let cursor_pos = line.x_for_index(input.cursor_offset());
+        let cursor_pos = line.x_for_index(input.display_cursor_offset());
 
         let (selection, cursor) = if input.selected_range.is_empty() {
             (
@@ -244,7 +234,7 @@ impl Element for TextElement {
                 Some(self.create_selection_quad(
                     bounds,
                     &line,
-                    &input.selected_range,
+                    &input.display_selection_range(),
                     scroll_offset,
                 )),
                 None,

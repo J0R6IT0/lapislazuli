@@ -118,6 +118,7 @@ pub struct InputState {
     pub(super) should_auto_scroll: bool,
     pub(super) cursor: Entity<Cursor>,
     masked: bool,
+    mask: SharedString,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -161,6 +162,7 @@ impl InputState {
             scroll_handle: ScrollHandle::new(),
             should_auto_scroll: false,
             masked: false,
+            mask: SharedString::new("•"),
             cursor,
             _subscriptions,
         }
@@ -193,9 +195,72 @@ impl InputState {
         self
     }
 
+    /// Set whether the input is masked with a custom mask string
+    ///
+    /// When masked, the input will display the provided mask string repeated cyclically
+    /// to match the character count of the actual text.
+    ///
+    /// # Examples
+    ///
+    /// - `masked_with(true, "*")` - Traditional password masking with asterisks
+    /// - `masked_with(true, "•")` - Modern password masking with bullets
+    /// - `masked_with(true, "ab")` - Each character replaced with "ab", so "hello" becomes "ababababab"
+    /// - `masked_with(true, "***")` - Each character replaced with "***", so "test" becomes "************"
+    pub fn masked_with(mut self, masked: bool, mask_string: impl Into<SharedString>) -> Self {
+        let mask_string = mask_string.into();
+        let changed = self.masked != masked || self.mask != mask_string;
+
+        if changed {
+            self.masked = masked;
+            self.mask = mask_string;
+            self.should_auto_scroll = true;
+        }
+        self
+    }
+
+    /// Set the mask string to use when masking is enabled
+    ///
+    /// Each character in the actual text will be replaced with the entire mask string
+    /// when masking is enabled.
+    pub fn mask(mut self, mask_string: impl Into<SharedString>) -> Self {
+        let mask_string = mask_string.into();
+        if self.mask != mask_string {
+            self.mask = mask_string;
+            if self.masked {
+                self.should_auto_scroll = true;
+            }
+        }
+        self
+    }
+
     /// Whether the input is masked
     pub fn is_masked(&self) -> bool {
         self.masked
+    }
+
+    /// Returns the text that should be displayed, handling masking and placeholder logic
+    pub fn display_text(&self) -> SharedString {
+        if self.value.is_empty() {
+            self.placeholder.clone()
+        } else if self.is_masked() {
+            let committed_char_count = if let Some(marked_range) = &self.marked_range {
+                // Count characters before and after marked range separately
+                let before_count = self.value[..marked_range.start].chars().count();
+                let after_count = self.value[marked_range.end..].chars().count();
+                before_count + after_count
+            } else {
+                self.value.chars().count()
+            };
+
+            // Create masked text by replacing each character with the entire mask string
+            if self.mask.is_empty() {
+                "".into()
+            } else {
+                self.mask.repeat(committed_char_count).into()
+            }
+        } else {
+            self.value.clone()
+        }
     }
 
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
@@ -602,7 +667,7 @@ impl InputState {
 
         self.should_auto_scroll = false;
 
-        let cursor_offset = self.cursor_offset();
+        let cursor_offset = self.display_cursor_offset();
         let cursor_x = layout.x_for_index(cursor_offset);
         let current_scroll = self.scroll_handle.offset();
         let visible_width = bounds.size.width - px(CURSOR_WIDTH);
@@ -762,6 +827,43 @@ impl InputState {
         }
     }
 
+    /// Get the current cursor offset in display text coordinates
+    pub(super) fn display_cursor_offset(&self) -> usize {
+        self.actual_to_display_offset(self.cursor_offset())
+    }
+
+    /// Convert actual text range to display text range for masked inputs
+    pub(super) fn display_selection_range(&self) -> std::ops::Range<usize> {
+        let start = self.actual_to_display_offset(self.selected_range.start);
+        let end = self.actual_to_display_offset(self.selected_range.end);
+        start..end
+    }
+
+    /// Convert actual text offset to display text offset
+    fn actual_to_display_offset(&self, actual_offset: usize) -> usize {
+        if !self.is_masked() {
+            return actual_offset;
+        }
+
+        if let Some(marked_range) = &self.marked_range {
+            if actual_offset <= marked_range.start {
+                // Before marked range: all characters are masked
+                actual_offset * self.mask.len()
+            } else if actual_offset <= marked_range.end {
+                // Inside marked range: characters before are masked, current position is not
+                marked_range.start * self.mask.len() + (actual_offset - marked_range.start)
+            } else {
+                // After marked range: before+marked chars, then masked chars after
+                marked_range.start * self.mask.len()
+                    + (marked_range.end - marked_range.start)
+                    + (actual_offset - marked_range.end) * self.mask.len()
+            }
+        } else {
+            // No marked text: all characters are masked
+            actual_offset * self.mask.len()
+        }
+    }
+
     /// Calculate text index for mouse position
     fn index_for_mouse_position(&self, position: Point<Pixels>) -> usize {
         if self.value.is_empty() {
@@ -781,7 +883,37 @@ impl InputState {
         }
 
         let scroll_offset = self.scroll_handle.offset();
-        line.closest_index_for_x(position.x - bounds.left() + scroll_offset.x)
+        let display_index = line.closest_index_for_x(position.x - bounds.left() + scroll_offset.x);
+        self.display_to_actual_offset(display_index)
+    }
+
+    /// Convert display text offset back to actual text offset
+    fn display_to_actual_offset(&self, display_offset: usize) -> usize {
+        if !self.is_masked() || self.mask.is_empty() {
+            return display_offset;
+        }
+
+        let mask_len = self.mask.len();
+
+        if let Some(marked_range) = &self.marked_range {
+            let masked_before_end = marked_range.start * mask_len;
+            let marked_end = masked_before_end + (marked_range.end - marked_range.start);
+
+            if display_offset <= masked_before_end {
+                // In masked text before marked range
+                (display_offset / mask_len).min(marked_range.start)
+            } else if display_offset <= marked_end {
+                // In unmarked marked range
+                marked_range.start + (display_offset - masked_before_end)
+            } else {
+                // In masked text after marked range
+                let after_offset = (display_offset - marked_end) / mask_len;
+                (marked_range.end + after_offset).min(self.value.chars().count())
+            }
+        } else {
+            // No marked text: simple division
+            (display_offset / mask_len).min(self.value.chars().count())
+        }
     }
 
     // ============================================================================
@@ -973,7 +1105,7 @@ impl EntityInputHandler for InputState {
         let line_point = self.last_bounds?.localize(&point)?;
         let last_layout = self.last_layout.as_ref()?;
 
-        assert_eq!(last_layout.text, self.value);
+        assert_eq!(last_layout.text, self.display_text());
         let utf8_index = last_layout.index_for_x(point.x - line_point.x)?;
         Some(self.offset_to_utf16(utf8_index))
     }

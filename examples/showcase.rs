@@ -36,6 +36,7 @@ impl Showcase {
             InputState::new(window, cx)
                 .placeholder("Try typing something here...")
                 .placeholder_color(rgb(0x9ca3af))
+                .mask("😎")
         });
 
         app.new(|cx| Self {
@@ -564,7 +565,7 @@ impl Render for Showcase {
                                                     .bg(rgb(0x3b82f6))
                                                     .hover(|this| this.bg(rgb(0x2563eb)))
                                                     .rounded_md()
-                                                    .child(span("🔍").text_size(rems(1.2)))
+                                                    .child(span("👀").text_size(rems(1.2)))
                                             )
                                     )
                             )
