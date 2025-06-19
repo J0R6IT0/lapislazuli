@@ -117,6 +117,7 @@ pub struct InputState {
     pub(super) scroll_handle: ScrollHandle,
     pub(super) should_auto_scroll: bool,
     pub(super) cursor: Entity<Cursor>,
+    masked: bool,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -159,6 +160,7 @@ impl InputState {
             selecting: false,
             scroll_handle: ScrollHandle::new(),
             should_auto_scroll: false,
+            masked: false,
             cursor,
             _subscriptions,
         }
@@ -180,6 +182,20 @@ impl InputState {
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
         self.value = value.into();
         self
+    }
+
+    /// Set whether the input is masked (e.g., for passwords)
+    pub fn masked(&mut self, masked: bool) -> &Self {
+        if self.masked != masked {
+            self.masked = masked;
+            self.should_auto_scroll = true;
+        }
+        self
+    }
+
+    /// Whether the input is masked
+    pub fn is_masked(&self) -> bool {
+        self.masked
     }
 
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {

@@ -63,6 +63,18 @@ impl TextElement {
     fn prepare_display_text(&self, input: &InputState, text_color: Hsla) -> (SharedString, Hsla) {
         if input.value.is_empty() {
             (input.placeholder.clone(), input.placeholder_color)
+        } else if input.is_masked() {
+            let committed_char_count = if let Some(marked_range) = &input.marked_range {
+                // Count characters before and after marked range separately
+                let before_count = input.value[..marked_range.start].chars().count();
+                let after_count = input.value[marked_range.end..].chars().count();
+                before_count + after_count
+            } else {
+                input.value.chars().count()
+            };
+
+            let value = "*".repeat(committed_char_count);
+            (value.into(), text_color)
         } else {
             (input.value.clone(), text_color)
         }
@@ -74,8 +86,21 @@ impl TextElement {
         display_text: &str,
         base_run: TextRun,
         marked_range: Option<&std::ops::Range<usize>>,
+        is_masked: bool,
     ) -> Vec<TextRun> {
+        // For masked text, we've already excluded marked text from display_text,
+        // so no need for marked text styling
+        if is_masked || marked_range.is_none() {
+            return vec![base_run];
+        }
+
         if let Some(marked_range) = marked_range {
+            // Ensure marked_range doesn't exceed display_text bounds
+            let display_len = display_text.len();
+            if marked_range.start >= display_len || marked_range.end > display_len {
+                return vec![base_run];
+            }
+
             vec![
                 TextRun {
                     len: marked_range.start,
@@ -91,7 +116,7 @@ impl TextElement {
                     ..base_run.clone()
                 },
                 TextRun {
-                    len: display_text.len() - marked_range.end,
+                    len: display_len - marked_range.end,
                     ..base_run.clone()
                 },
             ]
@@ -189,7 +214,12 @@ impl Element for TextElement {
             strikethrough: None,
         };
 
-        let runs = self.create_text_runs(&display_text, base_run, input.marked_range.as_ref());
+        let runs = self.create_text_runs(
+            &display_text,
+            base_run,
+            input.marked_range.as_ref(),
+            input.is_masked(),
+        );
 
         let font_size = style.font_size.to_pixels(window.rem_size());
         let line = window

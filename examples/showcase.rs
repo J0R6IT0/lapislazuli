@@ -542,6 +542,7 @@ impl Render for Showcase {
                             )
                             .child(
                                 TextInput::new(self.text_state.clone())
+                                    .set_masked(disabled, cx)
                                     .border_color(rgb(0xd1d5db))
                                     .focus(|this| this.border_color(rgb(0x3b82f6)))
                                     .text_color(rgb(0x374151))

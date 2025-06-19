@@ -28,6 +28,14 @@ impl TextInput {
         self
     }
 
+    pub fn set_masked(self, masked: bool, cx: &mut impl AppContext) -> Self {
+        self.state.update(cx, |this, cx| {
+            this.masked(masked);
+            cx.notify();
+        });
+        self
+    }
+
     pub fn leading(mut self, element: impl IntoElement) -> Self {
         self.leading = Some(element.into_any_element());
         self
