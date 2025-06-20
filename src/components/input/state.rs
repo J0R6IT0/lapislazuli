@@ -206,13 +206,13 @@ impl InputState {
     /// - `masked_with(true, "•")` - Modern password masking with bullets
     /// - `masked_with(true, "ab")` - Each character replaced with "ab", so "hello" becomes "ababababab"
     /// - `masked_with(true, "***")` - Each character replaced with "***", so "test" becomes "************"
-    pub fn masked_with(mut self, masked: bool, mask_string: impl Into<SharedString>) -> Self {
-        let mask_string = mask_string.into();
-        let changed = self.masked != masked || self.mask != mask_string;
+    pub fn masked_with(mut self, masked: bool, mask: impl Into<SharedString>) -> Self {
+        let mask = mask.into();
+        let changed = self.masked != masked || self.mask != mask;
 
         if changed {
             self.masked = masked;
-            self.mask = mask_string;
+            self.mask = mask;
             self.should_auto_scroll = true;
         }
         self
@@ -222,10 +222,10 @@ impl InputState {
     ///
     /// Each character in the actual text will be replaced with the entire mask string
     /// when masking is enabled.
-    pub fn mask(mut self, mask_string: impl Into<SharedString>) -> Self {
-        let mask_string = mask_string.into();
-        if self.mask != mask_string {
-            self.mask = mask_string;
+    pub fn mask(mut self, mask: impl Into<SharedString>) -> Self {
+        let mask = mask.into();
+        if self.mask != mask {
+            self.mask = mask;
             if self.masked {
                 self.should_auto_scroll = true;
             }
@@ -243,20 +243,20 @@ impl InputState {
         if self.value.is_empty() {
             self.placeholder.clone()
         } else if self.is_masked() {
-            let committed_char_count = if let Some(marked_range) = &self.marked_range {
-                // Count characters before and after marked range separately
-                let before_count = self.value[..marked_range.start].chars().count();
-                let after_count = self.value[marked_range.end..].chars().count();
+            let committed_grapheme_count = if let Some(marked_range) = &self.marked_range {
+                // Count graphemes before and after marked range separately
+                let before_count = self.value[..marked_range.start].graphemes(true).count();
+                let after_count = self.value[marked_range.end..].graphemes(true).count();
                 before_count + after_count
             } else {
-                self.value.chars().count()
+                self.value.graphemes(true).count()
             };
 
-            // Create masked text by replacing each character with the entire mask string
+            // Create masked text by replacing each grapheme with the entire mask string
             if self.mask.is_empty() {
                 "".into()
             } else {
-                self.mask.repeat(committed_char_count).into()
+                self.mask.repeat(committed_grapheme_count).into()
             }
         } else {
             self.value.clone()
@@ -847,20 +847,27 @@ impl InputState {
 
         if let Some(marked_range) = &self.marked_range {
             if actual_offset <= marked_range.start {
-                // Before marked range: all characters are masked
-                actual_offset * self.mask.len()
+                // Before marked range: count graphemes and multiply by mask length
+                let grapheme_count = self.value[..actual_offset].graphemes(true).count();
+                grapheme_count * self.mask.len()
             } else if actual_offset <= marked_range.end {
-                // Inside marked range: characters before are masked, current position is not
-                marked_range.start * self.mask.len() + (actual_offset - marked_range.start)
+                // Inside marked range: masked graphemes before + unmarked bytes within
+                let before_graphemes = self.value[..marked_range.start].graphemes(true).count();
+                before_graphemes * self.mask.len() + (actual_offset - marked_range.start)
             } else {
-                // After marked range: before+marked chars, then masked chars after
-                marked_range.start * self.mask.len()
+                // After marked range: before masked + marked bytes + after masked
+                let before_graphemes = self.value[..marked_range.start].graphemes(true).count();
+                let after_graphemes = self.value[marked_range.end..actual_offset]
+                    .graphemes(true)
+                    .count();
+                before_graphemes * self.mask.len()
                     + (marked_range.end - marked_range.start)
-                    + (actual_offset - marked_range.end) * self.mask.len()
+                    + after_graphemes * self.mask.len()
             }
         } else {
-            // No marked text: all characters are masked
-            actual_offset * self.mask.len()
+            // No marked text: count graphemes and multiply by mask length
+            let grapheme_count = self.value[..actual_offset].graphemes(true).count();
+            grapheme_count * self.mask.len()
         }
     }
 
@@ -896,24 +903,48 @@ impl InputState {
         let mask_len = self.mask.len();
 
         if let Some(marked_range) = &self.marked_range {
-            let masked_before_end = marked_range.start * mask_len;
+            let before_graphemes = self.value[..marked_range.start].graphemes(true).count();
+            let masked_before_end = before_graphemes * mask_len;
             let marked_end = masked_before_end + (marked_range.end - marked_range.start);
 
             if display_offset <= masked_before_end {
-                // In masked text before marked range
-                (display_offset / mask_len).min(marked_range.start)
+                // In masked text before marked range - find grapheme boundary
+                let target_grapheme = display_offset / mask_len;
+                self.grapheme_offset_to_byte_offset(target_grapheme.min(before_graphemes))
             } else if display_offset <= marked_end {
                 // In unmarked marked range
                 marked_range.start + (display_offset - masked_before_end)
             } else {
-                // In masked text after marked range
-                let after_offset = (display_offset - marked_end) / mask_len;
-                (marked_range.end + after_offset).min(self.value.chars().count())
+                // In masked text after marked range - find grapheme boundary
+                let after_display = display_offset - marked_end;
+                let target_after_grapheme = after_display / mask_len;
+                let after_graphemes = self.value[marked_range.end..].graphemes(true).count();
+                let actual_after_grapheme = target_after_grapheme.min(after_graphemes);
+
+                // Convert grapheme index to byte offset from marked_range.end
+                let after_byte_offset = self.value[marked_range.end..]
+                    .grapheme_indices(true)
+                    .nth(actual_after_grapheme)
+                    .map(|(i, _)| i)
+                    .unwrap_or(self.value.len() - marked_range.end);
+
+                marked_range.end + after_byte_offset
             }
         } else {
-            // No marked text: simple division
-            (display_offset / mask_len).min(self.value.chars().count())
+            // No marked text: find grapheme boundary
+            let target_grapheme = display_offset / mask_len;
+            let total_graphemes = self.value.graphemes(true).count();
+            self.grapheme_offset_to_byte_offset(target_grapheme.min(total_graphemes))
         }
+    }
+
+    /// Convert grapheme index to byte offset
+    fn grapheme_offset_to_byte_offset(&self, grapheme_index: usize) -> usize {
+        self.value
+            .grapheme_indices(true)
+            .nth(grapheme_index)
+            .map(|(i, _)| i)
+            .unwrap_or(self.value.len())
     }
 
     // ============================================================================
