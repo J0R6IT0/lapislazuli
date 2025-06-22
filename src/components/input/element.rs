@@ -216,8 +216,8 @@ impl Element for TextElement {
             .text_system()
             .shape_line(display_text, font_size, &runs);
 
-        self.input.update(app, |input, cx| {
-            input.auto_scroll_to_cursor(&line, bounds, cx);
+        self.input.update(app, |input, _| {
+            input.auto_scroll_to_cursor(&line, bounds);
         });
 
         let input = self.input.read(app);

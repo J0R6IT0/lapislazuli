@@ -1,6 +1,6 @@
 use crate::components::input::{
     cursor::Cursor,
-    element::{CURSOR_WIDTH, TextElement},
+    element::{TextElement, CURSOR_WIDTH},
 };
 use gpui::*;
 use std::ops::Range;
@@ -655,12 +655,7 @@ impl InputState {
     }
 
     /// Automatically scroll to keep cursor visible
-    pub(super) fn auto_scroll_to_cursor(
-        &mut self,
-        layout: &ShapedLine,
-        bounds: Bounds<Pixels>,
-        _: &mut Context<Self>,
-    ) {
+    pub(super) fn auto_scroll_to_cursor(&mut self, layout: &ShapedLine, bounds: Bounds<Pixels>) {
         if !self.should_auto_scroll {
             return;
         }
