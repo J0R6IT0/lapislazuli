@@ -1,6 +1,6 @@
 use crate::components::input::{
     cursor::Cursor,
-    element::{TextElement, CURSOR_WIDTH},
+    element::{CURSOR_WIDTH, TextElement},
 };
 use gpui::*;
 use std::ops::Range;
@@ -1097,6 +1097,8 @@ impl EntityInputHandler for InputState {
                 let new_pos = range.start + new_text.len();
                 new_pos..new_pos
             });
+
+        self.should_auto_scroll = true;
         cx.notify();
     }
 

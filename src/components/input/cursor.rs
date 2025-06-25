@@ -1,4 +1,4 @@
-/* Code taken from
+/* Based on
  * https://github.com/longbridge/gpui-component/blob/main/crates/ui/src/input/blink_cursor.rs
  */
 
@@ -6,12 +6,13 @@ use gpui::*;
 use std::time::Duration;
 
 static INTERVAL: Duration = Duration::from_millis(500);
-static PAUSE_DELAY: Duration = Duration::from_millis(300);
+static PAUSE_DELAY: Duration = Duration::from_millis(500);
 
 pub struct Cursor {
     visible: bool,
     paused: bool,
     epoch: usize,
+    pause_epoch: usize,
 }
 
 impl Cursor {
@@ -20,6 +21,7 @@ impl Cursor {
             visible: true,
             paused: false,
             epoch: 0,
+            pause_epoch: 0,
         }
     }
 
@@ -33,6 +35,7 @@ impl Cursor {
     pub fn stop(&mut self, cx: &mut Context<Self>) {
         self.epoch = 0;
         self.visible = false;
+        self.paused = false;
         cx.notify();
     }
 
@@ -70,15 +73,19 @@ impl Cursor {
         self.paused = true;
         cx.notify();
 
-        // delay 500ms to start the blinking
-        let epoch = self.next_epoch();
+        self.pause_epoch += 1;
+        let pause_epoch = self.pause_epoch;
+        let resume_epoch = self.next_epoch();
+
         cx.spawn(async move |this, cx| {
             Timer::after(PAUSE_DELAY).await;
 
             if let Some(this) = this.upgrade() {
                 this.update(cx, |this, cx| {
-                    this.paused = false;
-                    this.blink(epoch, cx);
+                    if this.pause_epoch == pause_epoch {
+                        this.paused = false;
+                        this.blink(resume_epoch, cx);
+                    }
                 })
                 .ok();
             }
