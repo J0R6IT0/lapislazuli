@@ -7,10 +7,9 @@ mod trigger;
 pub use list::*;
 pub use trigger::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Action, Debug, Clone, Copy, PartialEq, Eq)]
+#[action(namespace = tab_bar, no_json)]
 pub struct SelectTab(usize);
-
-impl_internal_actions!(tab_bar, [SelectTab]);
 
 #[derive(IntoElement)]
 pub struct Tabs {
