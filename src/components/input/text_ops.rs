@@ -4,7 +4,6 @@
 //! and text manipulation operations like word boundaries and grapheme clusters.
 
 use std::ops::Range;
-
 use unicode_segmentation::UnicodeSegmentation;
 
 /// Character type for word boundary detection
@@ -45,20 +44,24 @@ impl TextOps {
             return 0;
         }
 
-        let chars = text.char_indices().rev();
+        let mut iter = text.char_indices().rev().peekable();
         let mut found_non_whitespace = false;
         let mut last_char_type = None;
+        let mut prev_ch = None;
 
-        for (i, ch) in chars {
+        while let Some((i, ch)) = iter.next() {
             if i >= offset {
+                prev_ch = Some(ch);
                 continue;
             }
 
-            let char_type = Self::char_type(ch);
+            let next_ch = iter.peek().map(|&(_, c)| c);
+            let char_type = Self::char_type(ch, next_ch, prev_ch);
 
             if !found_non_whitespace && char_type != CharType::Whitespace {
                 found_non_whitespace = true;
                 last_char_type = Some(char_type);
+                prev_ch = Some(ch);
                 continue;
             }
 
@@ -71,6 +74,7 @@ impl TextOps {
             }
 
             last_char_type = Some(char_type);
+            prev_ch = Some(ch);
         }
 
         0
@@ -82,20 +86,24 @@ impl TextOps {
             return text.len();
         }
 
-        let chars = text.char_indices();
+        let mut iter = text.char_indices().peekable();
         let mut found_non_whitespace = false;
         let mut last_char_type = None;
+        let mut prev_ch = None;
 
-        for (i, ch) in chars {
+        while let Some((i, ch)) = iter.next() {
             if i < offset {
+                prev_ch = Some(ch);
                 continue;
             }
 
-            let char_type = Self::char_type(ch);
+            let next_ch = iter.peek().map(|&(_, c)| c);
+            let char_type = Self::char_type(ch, next_ch, prev_ch);
 
             if !found_non_whitespace && char_type != CharType::Whitespace {
                 found_non_whitespace = true;
                 last_char_type = Some(char_type);
+                prev_ch = Some(ch);
                 continue;
             }
 
@@ -108,15 +116,21 @@ impl TextOps {
             }
 
             last_char_type = Some(char_type);
+            prev_ch = Some(ch);
         }
 
         text.len()
     }
 
     /// Determine the character type for word boundary detection
-    fn char_type(ch: char) -> CharType {
+    fn char_type(ch: char, next: Option<char>, prev: Option<char>) -> CharType {
         if ch.is_whitespace() {
             CharType::Whitespace
+        } else if (ch == '.')
+            && prev.map_or(false, |c| c.is_ascii_digit())
+            && next.map_or(false, |c| c.is_ascii_digit())
+        {
+            CharType::Word
         } else if ch.is_alphanumeric() || ch == '_' {
             CharType::Word
         } else {
@@ -172,5 +186,81 @@ impl TextOps {
     /// Convert a UTF-16 range to byte range
     pub fn range_from_utf16(text: &str, range: &Range<usize>) -> Range<usize> {
         Self::offset_from_utf16(text, range.start)..Self::offset_from_utf16(text, range.end)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_boundaries(text: &str, cursor: usize, expected_prev: usize, expected_next: usize) {
+        let prev = TextOps::previous_word_boundary(text, cursor);
+        let next = TextOps::next_word_boundary(text, cursor);
+        assert_eq!(
+            prev, expected_prev,
+            "prev_word_boundary failed for text='{text}', cursor={cursor}"
+        );
+        assert_eq!(
+            next, expected_next,
+            "next_word_boundary failed for text='{text}', cursor={cursor}"
+        );
+    }
+
+    #[test]
+    fn simple_words() {
+        test_boundaries("hello world", 6, 0, 11);
+        test_boundaries("hello world", 5, 0, 11);
+        test_boundaries("hello world", 0, 0, 5);
+    }
+
+    #[test]
+    fn multiple_spaces() {
+        test_boundaries("hello  world", 6, 0, 12);
+        test_boundaries("hello  world", 5, 0, 12);
+        test_boundaries("hello  world", 0, 0, 5);
+        test_boundaries("  hello world  ", 7, 2, 13);
+        test_boundaries("  hello world  ", 6, 2, 7);
+        test_boundaries("  hello world  ", 0, 0, 7);
+        test_boundaries("   ", 0, 0, 3);
+    }
+
+    #[test]
+    fn punctuation() {
+        test_boundaries("hello, world!", 6, 5, 12);
+        test_boundaries("hello, world!", 5, 0, 6);
+        test_boundaries("hello, world!", 0, 0, 5);
+        test_boundaries("hello... world!", 6, 5, 8);
+        test_boundaries("hello@world.com", 0, 0, 5);
+        test_boundaries("hello@world.com", 5, 0, 6);
+        test_boundaries("hello@world.com", 6, 5, 11);
+        test_boundaries("hello-world_test", 0, 0, 5);
+        test_boundaries("hello-world_test", 5, 0, 6);
+        test_boundaries("hello-world_test", 6, 5, 16);
+    }
+
+    #[test]
+    fn numbers() {
+        test_boundaries("123 456", 3, 0, 7);
+        test_boundaries("123 456", 2, 0, 3);
+        test_boundaries("123 456", 0, 0, 3);
+        test_boundaries("123.456", 3, 0, 7);
+        test_boundaries("123.456", 2, 0, 7);
+        test_boundaries("123.456", 0, 0, 7);
+        test_boundaries("1.23e10", 5, 0, 7);
+    }
+
+    #[test]
+    fn mixed() {
+        test_boundaries("file_name_v2-final.txt", 0, 0, 12);
+        test_boundaries("file_name_v2-final.txt", 12, 0, 13);
+        test_boundaries("file_name_v2-final.txt", 13, 12, 18);
+        test_boundaries("file_name_v2-final.txt", 18, 13, 19);
+        test_boundaries("file_name_v2-final.txt", 19, 18, 22);
+        test_boundaries("the quick-brown_fox42 jumps!", 0, 0, 3);
+        test_boundaries("the quick-brown_fox42 jumps!", 3, 0, 9);
+        test_boundaries("the quick-brown_fox42 jumps!", 9, 4, 10);
+        test_boundaries("the quick-brown_fox42 jumps!", 10, 9, 21);
+        test_boundaries("the quick-brown_fox42 jumps!", 21, 10, 27);
+        test_boundaries("the quick-brown_fox42 jumps!", 27, 22, 28);
     }
 }
