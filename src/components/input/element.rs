@@ -1,5 +1,6 @@
 use crate::components::input::state::InputState;
 use gpui::*;
+use unicode_segmentation::UnicodeSegmentation;
 
 pub const CURSOR_WIDTH: f32 = 1.0;
 const MARKED_TEXT_UNDERLINE_THICKNESS: f32 = 1.0;
@@ -61,13 +62,48 @@ impl TextElement {
 
     /// Prepares the display text and color based on content and placeholder
     fn prepare_display_text(&self, input: &InputState, text_color: Hsla) -> (SharedString, Hsla) {
-        let display_text = input.display_text();
+        /*let display_text = input.display_text();
         let color = if input.value.is_empty() {
             input.placeholder_color
         } else {
             text_color
         };
-        (display_text, color)
+        (display_text, color);
+
+        if input.value.is_empty() {
+            (input.placeholder_text.clone(), input.placeholder_color)
+        } else if !input.masked {
+            (input.value.clone(), text_color)
+        } else if input.mask.is_empty() {
+            (SharedString::new(""), text_color)
+        } else {
+
+        }*/
+
+        if input.value.is_empty() {
+            return (input.placeholder.clone(), input.placeholder_color);
+        }
+
+        if !input.masked {
+            return (input.value.clone(), text_color);
+        }
+
+        if input.mask.is_empty() {
+            return (SharedString::from(""), text_color);
+        }
+
+        let committed_grapheme_count = if let Some(marked_range) = &input.marked_range {
+            let before_count = input.value[..marked_range.start].graphemes(true).count();
+            let after_count = input.value[marked_range.end..].graphemes(true).count();
+            before_count + after_count
+        } else {
+            input.value.graphemes(true).count()
+        };
+
+        (
+            input.mask.repeat(committed_grapheme_count).into(),
+            text_color,
+        )
     }
 
     /// Creates text runs with proper styling including marked text underlines
@@ -208,7 +244,7 @@ impl Element for TextElement {
             &display_text,
             base_run,
             input.marked_range.as_ref(),
-            input.is_masked(),
+            input.masked,
         );
 
         let font_size = style.font_size.to_pixels(window.rem_size());

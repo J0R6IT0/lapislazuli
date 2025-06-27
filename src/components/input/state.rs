@@ -1,6 +1,7 @@
 use crate::components::input::{
     cursor::Cursor,
     element::{CURSOR_WIDTH, TextElement},
+    text_ops::TextOps,
 };
 use gpui::*;
 use std::ops::Range;
@@ -117,8 +118,8 @@ pub struct InputState {
     pub(super) scroll_handle: ScrollHandle,
     pub(super) should_auto_scroll: bool,
     pub(super) cursor: Entity<Cursor>,
-    masked: bool,
-    mask: SharedString,
+    pub(super) masked: bool,
+    pub(super) mask: SharedString,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -233,36 +234,6 @@ impl InputState {
         self
     }
 
-    /// Whether the input is masked
-    pub fn is_masked(&self) -> bool {
-        self.masked
-    }
-
-    /// Returns the text that should be displayed, handling masking and placeholder logic
-    pub fn display_text(&self) -> SharedString {
-        if self.value.is_empty() {
-            self.placeholder.clone()
-        } else if self.is_masked() {
-            let committed_grapheme_count = if let Some(marked_range) = &self.marked_range {
-                // Count graphemes before and after marked range separately
-                let before_count = self.value[..marked_range.start].graphemes(true).count();
-                let after_count = self.value[marked_range.end..].graphemes(true).count();
-                before_count + after_count
-            } else {
-                self.value.graphemes(true).count()
-            };
-
-            // Create masked text by replacing each grapheme with the entire mask string
-            if self.mask.is_empty() {
-                "".into()
-            } else {
-                self.mask.repeat(committed_grapheme_count).into()
-            }
-        } else {
-            self.value.clone()
-        }
-    }
-
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.cursor.update(cx, |cursor, cx| {
             cursor.start(cx);
@@ -292,7 +263,10 @@ impl InputState {
     /// Move cursor left by one grapheme cluster
     pub(super) fn left(&mut self, _: &Left, _: &mut Window, cx: &mut Context<Self>) {
         if self.selected_range.is_empty() {
-            self.move_to(self.previous_boundary(self.cursor_offset()), cx);
+            self.move_to(
+                TextOps::previous_boundary(&self.value, self.cursor_offset()),
+                cx,
+            );
         } else {
             self.move_to(self.selected_range.start, cx);
         }
@@ -301,7 +275,10 @@ impl InputState {
     /// Move cursor right by one grapheme cluster
     pub(super) fn right(&mut self, _: &Right, _: &mut Window, cx: &mut Context<Self>) {
         if self.selected_range.is_empty() {
-            self.move_to(self.next_boundary(self.selected_range.end), cx);
+            self.move_to(
+                TextOps::next_boundary(&self.value, self.selected_range.end),
+                cx,
+            );
         } else {
             self.move_to(self.selected_range.end, cx);
         }
@@ -309,13 +286,13 @@ impl InputState {
 
     /// Move cursor left by one word
     pub(super) fn word_left(&mut self, _: &WordLeft, _: &mut Window, cx: &mut Context<Self>) {
-        let new_offset = self.previous_word_boundary(self.cursor_offset());
+        let new_offset = TextOps::previous_word_boundary(&self.value, self.cursor_offset());
         self.move_to(new_offset, cx);
     }
 
     /// Move cursor right by one word
     pub(super) fn word_right(&mut self, _: &WordRight, _: &mut Window, cx: &mut Context<Self>) {
-        let new_offset = self.next_word_boundary(self.cursor_offset());
+        let new_offset = TextOps::next_word_boundary(&self.value, self.cursor_offset());
         self.move_to(new_offset, cx);
     }
 
@@ -344,12 +321,18 @@ impl InputState {
 
     /// Extend selection left by one grapheme cluster
     pub(super) fn select_left(&mut self, _: &SelectLeft, _: &mut Window, cx: &mut Context<Self>) {
-        self.select_to(self.previous_boundary(self.cursor_offset()), cx);
+        self.select_to(
+            TextOps::previous_boundary(&self.value, self.cursor_offset()),
+            cx,
+        );
     }
 
     /// Extend selection right by one grapheme cluster
     pub(super) fn select_right(&mut self, _: &SelectRight, _: &mut Window, cx: &mut Context<Self>) {
-        self.select_to(self.next_boundary(self.cursor_offset()), cx);
+        self.select_to(
+            TextOps::next_boundary(&self.value, self.cursor_offset()),
+            cx,
+        );
     }
 
     /// Extend selection left by one word
@@ -359,7 +342,7 @@ impl InputState {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let new_offset = self.previous_word_boundary(self.cursor_offset());
+        let new_offset = TextOps::previous_word_boundary(&self.value, self.cursor_offset());
         self.select_to(new_offset, cx);
     }
 
@@ -370,7 +353,7 @@ impl InputState {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let new_offset = self.next_word_boundary(self.cursor_offset());
+        let new_offset = TextOps::next_word_boundary(&self.value, self.cursor_offset());
         self.select_to(new_offset, cx);
     }
 
@@ -419,8 +402,8 @@ impl InputState {
 
     /// Select the word at the given offset
     fn select_word(&mut self, offset: usize, cx: &mut Context<Self>) {
-        let start = self.previous_word_boundary(offset);
-        let end = self.next_word_boundary(offset);
+        let start = TextOps::previous_word_boundary(&self.value, offset);
+        let end = TextOps::next_word_boundary(&self.value, offset);
         self.selected_range = start..end;
         self.selection_reversed = false;
         cx.notify();
@@ -433,7 +416,10 @@ impl InputState {
     /// Delete character before cursor
     pub(super) fn backspace(&mut self, _: &Backspace, window: &mut Window, cx: &mut Context<Self>) {
         if self.selected_range.is_empty() {
-            self.select_to(self.previous_boundary(self.cursor_offset()), cx);
+            self.select_to(
+                TextOps::previous_boundary(&self.value, self.cursor_offset()),
+                cx,
+            );
         }
         self.replace_text_in_range(None, "", window, cx);
     }
@@ -441,7 +427,10 @@ impl InputState {
     /// Delete character after cursor
     pub(super) fn delete(&mut self, _: &Delete, window: &mut Window, cx: &mut Context<Self>) {
         if self.selected_range.is_empty() {
-            self.select_to(self.next_boundary(self.cursor_offset()), cx);
+            self.select_to(
+                TextOps::next_boundary(&self.value, self.cursor_offset()),
+                cx,
+            );
         }
         self.replace_text_in_range(None, "", window, cx);
     }
@@ -494,7 +483,7 @@ impl InputState {
     ) {
         if self.selected_range.is_empty() {
             let cursor_pos = self.cursor_offset();
-            let word_start = self.previous_word_boundary(cursor_pos);
+            let word_start = TextOps::previous_word_boundary(&self.value, cursor_pos);
             self.selected_range = word_start..cursor_pos;
         }
         self.replace_text_in_range(None, "", window, cx);
@@ -509,7 +498,7 @@ impl InputState {
     ) {
         if self.selected_range.is_empty() {
             let cursor_pos = self.cursor_offset();
-            let word_end = self.next_word_boundary(cursor_pos);
+            let word_end = TextOps::next_word_boundary(&self.value, cursor_pos);
             self.selected_range = cursor_pos..word_end;
         }
         self.replace_text_in_range(None, "", window, cx);
@@ -696,125 +685,11 @@ impl InputState {
     }
 
     // ============================================================================
-    // Text Boundary Helpers
-    // ============================================================================
-
-    /// Find the previous grapheme boundary
-    fn previous_boundary(&self, offset: usize) -> usize {
-        self.value
-            .grapheme_indices(true)
-            .rev()
-            .find_map(|(idx, _)| (idx < offset).then_some(idx))
-            .unwrap_or(0)
-    }
-
-    /// Find the next grapheme boundary
-    fn next_boundary(&self, offset: usize) -> usize {
-        self.value
-            .grapheme_indices(true)
-            .find_map(|(idx, _)| (idx > offset).then_some(idx))
-            .unwrap_or(self.value.len())
-    }
-
-    /// Find the previous word boundary
-    fn previous_word_boundary(&self, offset: usize) -> usize {
-        if offset == 0 {
-            return 0;
-        }
-
-        let chars = self.value.char_indices().rev();
-        let mut found_non_whitespace = false;
-
-        for (idx, ch) in chars {
-            if idx >= offset {
-                continue;
-            }
-
-            if ch.is_whitespace() {
-                if found_non_whitespace {
-                    return idx + ch.len_utf8();
-                }
-            } else if ch.is_alphanumeric() || ch == '_' {
-                found_non_whitespace = true;
-            } else {
-                if found_non_whitespace {
-                    return idx + ch.len_utf8();
-                }
-                // Treat punctuation as individual words
-                if idx + ch.len_utf8() < offset {
-                    return idx + ch.len_utf8();
-                }
-            }
-        }
-
-        0
-    }
-
-    /// Find the next word boundary
-    fn next_word_boundary(&self, offset: usize) -> usize {
-        if offset >= self.value.len() {
-            return self.value.len();
-        }
-
-        let chars = self.value.char_indices();
-        let mut found_non_whitespace = false;
-        let mut start_char_type = None;
-
-        for (idx, ch) in chars {
-            if idx < offset {
-                continue;
-            }
-
-            if start_char_type.is_none() {
-                start_char_type = Some(Self::char_type(ch));
-                continue;
-            }
-
-            let current_type = Self::char_type(ch);
-
-            match start_char_type.unwrap() {
-                'w' => {
-                    // Starting from whitespace
-                    if current_type != 'w' {
-                        found_non_whitespace = true;
-                    } else if found_non_whitespace {
-                        return idx;
-                    }
-                }
-                'a' => {
-                    // Starting from alphanumeric
-                    if current_type != 'a' {
-                        return idx;
-                    }
-                }
-                'p' => {
-                    // Starting from punctuation
-                    return idx;
-                }
-                _ => {}
-            }
-        }
-
-        self.value.len()
-    }
-
-    /// Classify character type for word boundary detection
-    fn char_type(ch: char) -> char {
-        if ch.is_whitespace() {
-            'w' // whitespace
-        } else if ch.is_alphanumeric() || ch == '_' {
-            'a' // alphanumeric
-        } else {
-            'p' // punctuation
-        }
-    }
-
-    // ============================================================================
     // Position and Index Calculation
     // ============================================================================
 
     /// Get the current cursor offset
-    pub(super) fn cursor_offset(&self) -> usize {
+    fn cursor_offset(&self) -> usize {
         if self.selection_reversed {
             self.selected_range.start
         } else {
@@ -836,7 +711,7 @@ impl InputState {
 
     /// Convert actual text offset to display text offset
     fn actual_to_display_offset(&self, actual_offset: usize) -> usize {
-        if !self.is_masked() {
+        if !self.masked {
             return actual_offset;
         }
 
@@ -891,7 +766,7 @@ impl InputState {
 
     /// Convert display text offset back to actual text offset
     fn display_to_actual_offset(&self, display_offset: usize) -> usize {
-        if !self.is_masked() || self.mask.is_empty() {
+        if !self.masked || self.mask.is_empty() {
             return display_offset;
         }
 
@@ -905,7 +780,10 @@ impl InputState {
             if display_offset <= masked_before_end {
                 // In masked text before marked range - find grapheme boundary
                 let target_grapheme = display_offset / mask_len;
-                self.grapheme_offset_to_byte_offset(target_grapheme.min(before_graphemes))
+                TextOps::grapheme_offset_to_byte_offset(
+                    &self.value,
+                    target_grapheme.min(before_graphemes),
+                )
             } else if display_offset <= marked_end {
                 // In unmarked marked range
                 marked_range.start + (display_offset - masked_before_end)
@@ -929,69 +807,13 @@ impl InputState {
             // No marked text: find grapheme boundary
             let target_grapheme = display_offset / mask_len;
             let total_graphemes = self.value.graphemes(true).count();
-            self.grapheme_offset_to_byte_offset(target_grapheme.min(total_graphemes))
+            TextOps::grapheme_offset_to_byte_offset(
+                &self.value,
+                target_grapheme.min(total_graphemes),
+            )
         }
-    }
-
-    /// Convert grapheme index to byte offset
-    fn grapheme_offset_to_byte_offset(&self, grapheme_index: usize) -> usize {
-        self.value
-            .grapheme_indices(true)
-            .nth(grapheme_index)
-            .map(|(i, _)| i)
-            .unwrap_or(self.value.len())
-    }
-
-    // ============================================================================
-    // UTF-16 Conversion Helpers
-    // ============================================================================
-
-    /// Convert UTF-8 offset to UTF-16 offset
-    fn offset_to_utf16(&self, offset: usize) -> usize {
-        let mut utf16_offset = 0;
-        let mut utf8_count = 0;
-
-        for ch in self.value.chars() {
-            if utf8_count >= offset {
-                break;
-            }
-            utf8_count += ch.len_utf8();
-            utf16_offset += ch.len_utf16();
-        }
-
-        utf16_offset
-    }
-
-    /// Convert UTF-16 offset to UTF-8 offset
-    fn offset_from_utf16(&self, offset: usize) -> usize {
-        let mut utf8_offset = 0;
-        let mut utf16_count = 0;
-
-        for ch in self.value.chars() {
-            if utf16_count >= offset {
-                break;
-            }
-            utf16_count += ch.len_utf16();
-            utf8_offset += ch.len_utf8();
-        }
-
-        utf8_offset
-    }
-
-    /// Convert UTF-8 range to UTF-16 range
-    fn range_to_utf16(&self, range: &Range<usize>) -> Range<usize> {
-        self.offset_to_utf16(range.start)..self.offset_to_utf16(range.end)
-    }
-
-    /// Convert UTF-16 range to UTF-8 range
-    fn range_from_utf16(&self, range_utf16: &Range<usize>) -> Range<usize> {
-        self.offset_from_utf16(range_utf16.start)..self.offset_from_utf16(range_utf16.end)
     }
 }
-
-// ============================================================================
-// Trait Implementations
-// ============================================================================
 
 impl EntityInputHandler for InputState {
     fn text_for_range(
@@ -1001,8 +823,8 @@ impl EntityInputHandler for InputState {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<String> {
-        let range = self.range_from_utf16(&range_utf16);
-        actual_range.replace(self.range_to_utf16(&range));
+        let range = TextOps::range_from_utf16(&self.value, &range_utf16);
+        actual_range.replace(TextOps::range_to_utf16(&self.value, &range));
         Some(self.value[range].to_string())
     }
 
@@ -1013,7 +835,7 @@ impl EntityInputHandler for InputState {
         _: &mut Context<Self>,
     ) -> Option<UTF16Selection> {
         Some(UTF16Selection {
-            range: self.range_to_utf16(&self.selected_range),
+            range: TextOps::range_to_utf16(&self.value, &self.selected_range),
             reversed: self.selection_reversed,
         })
     }
@@ -1021,7 +843,7 @@ impl EntityInputHandler for InputState {
     fn marked_text_range(&self, _: &mut Window, _: &mut Context<Self>) -> Option<Range<usize>> {
         self.marked_range
             .as_ref()
-            .map(|range| self.range_to_utf16(range))
+            .map(|range| TextOps::range_to_utf16(&self.value, range))
     }
 
     fn unmark_text(&mut self, _: &mut Window, _: &mut Context<Self>) {
@@ -1038,7 +860,7 @@ impl EntityInputHandler for InputState {
         self.pause_cursor_blink(cx);
         let range = range_utf16
             .as_ref()
-            .map(|range_utf16| self.range_from_utf16(range_utf16))
+            .map(|range_utf16| TextOps::range_from_utf16(&self.value, range_utf16))
             .or(self.marked_range.clone())
             .unwrap_or(self.selected_range.clone());
 
@@ -1070,7 +892,7 @@ impl EntityInputHandler for InputState {
     ) {
         let range = range_utf16
             .as_ref()
-            .map(|range_utf16| self.range_from_utf16(range_utf16))
+            .map(|range_utf16| TextOps::range_from_utf16(&self.value, range_utf16))
             .or(self.marked_range.clone())
             .unwrap_or(self.selected_range.clone());
 
@@ -1091,7 +913,7 @@ impl EntityInputHandler for InputState {
 
         self.selected_range = new_selected_range_utf16
             .as_ref()
-            .map(|range_utf16| self.range_from_utf16(range_utf16))
+            .map(|range_utf16| TextOps::range_from_utf16(&self.value, range_utf16))
             .map(|new_range| (new_range.start + range.start)..(new_range.end + range.start))
             .unwrap_or_else(|| {
                 let new_pos = range.start + new_text.len();
@@ -1110,7 +932,7 @@ impl EntityInputHandler for InputState {
         _: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
         let last_layout = self.last_layout.as_ref()?;
-        let range = self.range_from_utf16(&range_utf16);
+        let range = TextOps::range_from_utf16(&self.value, &range_utf16);
 
         Some(Bounds::from_corners(
             point(
@@ -1133,9 +955,8 @@ impl EntityInputHandler for InputState {
         let line_point = self.last_bounds?.localize(&point)?;
         let last_layout = self.last_layout.as_ref()?;
 
-        assert_eq!(last_layout.text, self.display_text());
         let utf8_index = last_layout.index_for_x(point.x - line_point.x)?;
-        Some(self.offset_to_utf16(utf8_index))
+        Some(TextOps::offset_to_utf16(&self.value, utf8_index))
     }
 }
 
