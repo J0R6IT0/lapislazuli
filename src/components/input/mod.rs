@@ -1,5 +1,6 @@
 mod cursor;
 mod element;
+mod history;
 mod state;
 mod text_input;
 mod text_ops;

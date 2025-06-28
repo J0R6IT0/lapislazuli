@@ -1,6 +1,7 @@
 use crate::components::input::{
     cursor::Cursor,
     element::{CURSOR_WIDTH, TextElement},
+    history::History,
     text_ops::TextOps,
 };
 use gpui::*;
@@ -65,6 +66,9 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("ctrl-v", Paste, Some(CONTEXT)),
         #[cfg(not(target_os = "macos"))]
         KeyBinding::new("ctrl-x", Cut, Some(CONTEXT)),
+        // History
+        KeyBinding::new("cmd-z", Undo, Some(CONTEXT)),
+        KeyBinding::new("cmd-shift-z", Redo, Some(CONTEXT)),
         // Special features
         KeyBinding::new("ctrl-cmd-space", ShowCharacterPalette, Some(CONTEXT)),
     ]);
@@ -97,6 +101,8 @@ actions!(
         SelectWordRight,
         SelectToHome,
         SelectToEnd,
+        Undo,
+        Redo,
     ]
 );
 
@@ -120,6 +126,7 @@ pub struct InputState {
     pub(super) cursor: Entity<Cursor>,
     pub(super) masked: bool,
     pub(super) mask: SharedString,
+    history: History,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -164,6 +171,7 @@ impl InputState {
             should_auto_scroll: false,
             masked: false,
             mask: SharedString::new("•"),
+            history: History::new(SharedString::new("")),
             cursor,
             _subscriptions,
         }
@@ -184,6 +192,7 @@ impl InputState {
     /// Set the initial value
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
         self.value = value.into();
+        self.history = History::new(self.value.clone());
         self
     }
 
@@ -460,6 +469,36 @@ impl InputState {
         }
     }
 
+    pub(super) fn undo(&mut self, _: &Undo, window: &mut Window, cx: &mut Context<Self>) {
+        let value = self.history.undo();
+        if let Some(value) = value {
+            self.replace_text_in_range(
+                Some(TextOps::range_from_utf16(
+                    &self.value,
+                    &(0..self.value.len()),
+                )),
+                &value,
+                window,
+                cx,
+            );
+        }
+    }
+
+    pub(super) fn redo(&mut self, _: &Redo, window: &mut Window, cx: &mut Context<Self>) {
+        let value = self.history.redo();
+        if let Some(value) = value {
+            self.replace_text_in_range(
+                Some(TextOps::range_from_utf16(
+                    &self.value,
+                    &(0..self.value.len()),
+                )),
+                &value,
+                window,
+                cx,
+            );
+        }
+    }
+
     /// Clear all text and reset state
     pub(super) fn clear(&mut self, _: &Clear, _: &mut Window, cx: &mut Context<Self>) {
         self.value = "".into();
@@ -703,7 +742,7 @@ impl InputState {
     }
 
     /// Convert actual text range to display text range for masked inputs
-    pub(super) fn display_selection_range(&self) -> std::ops::Range<usize> {
+    pub(super) fn display_selection_range(&self) -> Range<usize> {
         let start = self.actual_to_display_offset(self.selected_range.start);
         let end = self.actual_to_display_offset(self.selected_range.end);
         start..end
@@ -872,6 +911,7 @@ impl EntityInputHandler for InputState {
         );
 
         self.value = new_value.into();
+        self.history.push(self.value.clone());
         let new_cursor_pos = range.start + new_text.len();
         self.selected_range = new_cursor_pos..new_cursor_pos;
         self.marked_range = None;
