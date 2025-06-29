@@ -1,7 +1,7 @@
 use crate::components::input::{
     cursor::Cursor,
     element::{CURSOR_WIDTH, TextElement},
-    history::History,
+    history::{History, HistoryChange},
     text_ops::TextOps,
 };
 use gpui::*;
@@ -69,6 +69,10 @@ pub fn init(cx: &mut App) {
         // History
         KeyBinding::new("cmd-z", Undo, Some(CONTEXT)),
         KeyBinding::new("cmd-shift-z", Redo, Some(CONTEXT)),
+        #[cfg(not(target_os = "macos"))]
+        KeyBinding::new("ctrl-z", Undo, Some(CONTEXT)),
+        #[cfg(not(target_os = "macos"))]
+        KeyBinding::new("ctrl-y", Redo, Some(CONTEXT)),
         // Special features
         KeyBinding::new("ctrl-cmd-space", ShowCharacterPalette, Some(CONTEXT)),
     ]);
@@ -127,6 +131,7 @@ pub struct InputState {
     pub(super) masked: bool,
     pub(super) mask: SharedString,
     history: History,
+    ignore_history: bool,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -171,7 +176,8 @@ impl InputState {
             should_auto_scroll: false,
             masked: false,
             mask: SharedString::new("•"),
-            history: History::new(SharedString::new("")),
+            history: History::new(),
+            ignore_history: false,
             cursor,
             _subscriptions,
         }
@@ -192,7 +198,7 @@ impl InputState {
     /// Set the initial value
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
         self.value = value.into();
-        self.history = History::new(self.value.clone());
+        self.history.clear();
         self
     }
 
@@ -469,34 +475,41 @@ impl InputState {
         }
     }
 
-    pub(super) fn undo(&mut self, _: &Undo, window: &mut Window, cx: &mut Context<Self>) {
-        let value = self.history.undo();
-        if let Some(value) = value {
-            self.replace_text_in_range(
-                Some(TextOps::range_from_utf16(
-                    &self.value,
-                    &(0..self.value.len()),
-                )),
-                &value,
-                window,
-                cx,
-            );
+    fn apply_history_change(
+        &mut self,
+        change: HistoryChange,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match change {
+            HistoryChange::Insert { text, range } => {
+                self.replace_text_in_range(Some(range), &text, window, cx);
+            }
+            HistoryChange::Delete { text, range } => {
+                self.replace_text_in_range(Some(range), &text, window, cx);
+            }
+            HistoryChange::Replace {
+                new_text, range, ..
+            } => {
+                self.replace_text_in_range(Some(range), &new_text, window, cx);
+            }
         }
     }
 
-    pub(super) fn redo(&mut self, _: &Redo, window: &mut Window, cx: &mut Context<Self>) {
-        let value = self.history.redo();
-        if let Some(value) = value {
-            self.replace_text_in_range(
-                Some(TextOps::range_from_utf16(
-                    &self.value,
-                    &(0..self.value.len()),
-                )),
-                &value,
-                window,
-                cx,
-            );
+    pub(super) fn undo(&mut self, _: &Undo, window: &mut Window, cx: &mut Context<Self>) {
+        self.ignore_history = true;
+        if let Some(change) = self.history.undo() {
+            self.apply_history_change(change, window, cx);
         }
+        self.ignore_history = false;
+    }
+
+    pub(super) fn redo(&mut self, _: &Redo, window: &mut Window, cx: &mut Context<Self>) {
+        self.ignore_history = true;
+        if let Some(change) = self.history.redo() {
+            self.apply_history_change(change, window, cx);
+        }
+        self.ignore_history = false;
     }
 
     /// Clear all text and reset state
@@ -893,7 +906,7 @@ impl EntityInputHandler for InputState {
         &mut self,
         range_utf16: Option<Range<usize>>,
         new_text: &str,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         self.pause_cursor_blink(cx);
@@ -903,6 +916,26 @@ impl EntityInputHandler for InputState {
             .or(self.marked_range.clone())
             .unwrap_or(self.selected_range.clone());
 
+        if !self.ignore_history {
+            if range.start == range.end {
+                self.history.push(HistoryChange::Insert {
+                    text: SharedString::from(new_text.to_string()),
+                    range: range.clone(),
+                });
+            } else if new_text.is_empty() {
+                self.history.push(HistoryChange::Delete {
+                    text: SharedString::from(self.value[range.start..range.end].to_string()),
+                    range: range.clone(),
+                });
+            } else {
+                self.history.push(HistoryChange::Replace {
+                    old_text: SharedString::from(self.value[range.start..range.end].to_string()),
+                    new_text: SharedString::from(new_text.to_string()),
+                    range: range.clone(),
+                });
+            }
+        }
+
         let new_value = format!(
             "{}{}{}",
             &self.value[0..range.start],
@@ -911,7 +944,6 @@ impl EntityInputHandler for InputState {
         );
 
         self.value = new_value.into();
-        self.history.push(self.value.clone());
         let new_cursor_pos = range.start + new_text.len();
         self.selected_range = new_cursor_pos..new_cursor_pos;
         self.marked_range = None;
