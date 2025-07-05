@@ -252,6 +252,7 @@ impl InputState {
     }
 
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        self.history.prevent_merge();
         self.cursor.update(cx, |cursor, cx| {
             cursor.start(cx);
         });
@@ -329,6 +330,7 @@ impl InputState {
         let offset = offset.clamp(0, self.value.len());
         self.selected_range = offset..offset;
         self.should_auto_scroll = true;
+        self.history.prevent_merge();
         cx.notify();
     }
 
@@ -360,6 +362,7 @@ impl InputState {
         cx: &mut Context<Self>,
     ) {
         let new_offset = TextOps::previous_word_boundary(&self.value, self.cursor_offset());
+        self.history.prevent_merge();
         self.select_to(new_offset, cx);
     }
 
@@ -371,6 +374,7 @@ impl InputState {
         cx: &mut Context<Self>,
     ) {
         let new_offset = TextOps::next_word_boundary(&self.value, self.cursor_offset());
+        self.history.prevent_merge();
         self.select_to(new_offset, cx);
     }
 
@@ -455,6 +459,7 @@ impl InputState {
     /// Paste text from clipboard
     pub(super) fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+            self.history.prevent_merge();
             // Replace newlines with spaces for single-line input
             self.replace_text_in_range(None, &text.replace('\n', " "), window, cx);
         }
@@ -473,6 +478,7 @@ impl InputState {
         if !self.selected_range.is_empty() {
             let selected_text = self.value[self.selected_range.clone()].to_string();
             cx.write_to_clipboard(ClipboardItem::new_string(selected_text));
+            self.history.prevent_merge();
             self.replace_text_in_range(None, "", window, cx);
         }
     }
@@ -480,7 +486,13 @@ impl InputState {
     pub(super) fn undo(&mut self, _: &Undo, window: &mut Window, cx: &mut Context<Self>) {
         self.ignore_history = true;
         if let Some(change) = self.history.undo() {
-            self.replace_text_in_range(Some(change.range()), &change.text(), window, cx);
+            self.replace_text_in_range(
+                Some(TextOps::range_to_utf16(&self.value, &change.range())),
+                &change.text(),
+                window,
+                cx,
+            );
+            self.selected_range = change.selection_range();
         }
         self.ignore_history = false;
     }
@@ -488,7 +500,12 @@ impl InputState {
     pub(super) fn redo(&mut self, _: &Redo, window: &mut Window, cx: &mut Context<Self>) {
         self.ignore_history = true;
         if let Some(change) = self.history.redo() {
-            self.replace_text_in_range(Some(change.range()), &change.text(), window, cx);
+            self.replace_text_in_range(
+                Some(TextOps::range_to_utf16(&self.value, &change.range())),
+                &change.text(),
+                window,
+                cx,
+            );
         }
         self.ignore_history = false;
     }
@@ -504,17 +521,17 @@ impl InputState {
 
         if range.start == range.end {
             self.history.push(Change::Insert {
-                range: TextOps::range_to_utf16(&self.value, range),
+                range: range.clone(),
                 text: new_text.to_string().into(),
             });
         } else if new_text.is_empty() {
             self.history.push(Change::Delete {
-                range: TextOps::range_to_utf16(&self.value, range),
+                range: range.clone(),
                 text: self.value[range.start..range.end].to_string().into(),
             })
         } else {
             self.history.push(Change::Replace {
-                range: TextOps::range_to_utf16(&self.value, range),
+                range: range.clone(),
                 new_text: new_text.to_string().into(),
                 old_text: self.value[range.start..range.end].to_string().into(),
             });
@@ -562,6 +579,7 @@ impl InputState {
             let word_end = TextOps::next_word_boundary(&self.value, cursor_pos);
             self.selected_range = cursor_pos..word_end;
         }
+        self.history.prevent_merge();
         self.replace_text_in_range(None, "", window, cx);
     }
 
