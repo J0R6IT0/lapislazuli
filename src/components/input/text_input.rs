@@ -54,8 +54,6 @@ impl InteractiveElement for TextInput {
     }
 }
 
-impl FocusableElement for TextInput {}
-
 impl RenderOnce for TextInput {
     fn render(self, window: &mut Window, app: &mut App) -> impl IntoElement {
         self.base
