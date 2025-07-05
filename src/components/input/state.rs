@@ -252,13 +252,13 @@ impl InputState {
     }
 
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        self.history.prevent_merge();
         self.cursor.update(cx, |cursor, cx| {
             cursor.start(cx);
         });
     }
 
     fn on_blur(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        self.history.prevent_merge();
         self.cursor.update(cx, |cursor, cx| {
             cursor.stop(cx);
         })
@@ -328,6 +328,9 @@ impl InputState {
     pub(super) fn move_to(&mut self, offset: usize, cx: &mut Context<Self>) {
         self.pause_cursor_blink(cx);
         let offset = offset.clamp(0, self.value.len());
+        if offset == self.cursor_offset() {
+            return;
+        }
         self.selected_range = offset..offset;
         self.should_auto_scroll = true;
         self.history.prevent_merge();

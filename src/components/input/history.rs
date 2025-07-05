@@ -1,7 +1,7 @@
 use gpui::SharedString;
 use std::ops::Range;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Change {
     Insert {
         range: Range<usize>,
@@ -79,8 +79,22 @@ impl Change {
                     text: t2,
                 },
             ) if r1.start + t1.len() == r2.start => Some(Change::Insert {
-                range: r1.start..r2.start + t2.len(),
+                range: r1.start..r1.start,
                 text: SharedString::from(format!("{}{}", t1, t2)),
+            }),
+            (
+                Change::Delete {
+                    range: r1,
+                    text: t1,
+                },
+                Change::Insert {
+                    range: r2,
+                    text: t2,
+                },
+            ) if r1.start == r2.start => Some(Change::Replace {
+                range: r1.clone(),
+                old_text: t1,
+                new_text: t2.clone(),
             }),
             (
                 Change::Delete {
@@ -107,6 +121,20 @@ impl Change {
             ) if r1.start == r2.start => Some(Change::Delete {
                 range: r1.start..(r1.end.max(r2.end)),
                 text: SharedString::from(format!("{}{}", t1, t2)),
+            }),
+            (
+                Change::Insert {
+                    range: r1,
+                    text: t1,
+                },
+                Change::Replace {
+                    range: r2,
+                    old_text,
+                    new_text,
+                },
+            ) if t1.ends_with(old_text.as_ref()) => Some(Change::Insert {
+                text: SharedString::from(format!("{}{}", &t1[r1.start..r2.start], new_text)),
+                range: r1,
             }),
             (
                 Change::Replace {
