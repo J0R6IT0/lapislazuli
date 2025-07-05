@@ -1,6 +1,7 @@
 use crate::components::input::{
     cursor::Cursor,
     element::{CURSOR_WIDTH, TextElement},
+    history::{Change, History},
     text_ops::TextOps,
 };
 use gpui::*;
@@ -67,6 +68,15 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("ctrl-x", Cut, Some(CONTEXT)),
         // Special features
         KeyBinding::new("ctrl-cmd-space", ShowCharacterPalette, Some(CONTEXT)),
+        // Undo/Redo
+        #[cfg(not(target_os = "macos"))]
+        KeyBinding::new("ctrl-z", Undo, Some(CONTEXT)),
+        #[cfg(not(target_os = "macos"))]
+        KeyBinding::new("ctrl-y", Redo, Some(CONTEXT)),
+        #[cfg(not(target_os = "macos"))]
+        KeyBinding::new("ctrl-shift-z", Redo, Some(CONTEXT)),
+        KeyBinding::new("cmd-z", Undo, Some(CONTEXT)),
+        KeyBinding::new("cmd-shift-z", Redo, Some(CONTEXT)),
     ]);
 }
 
@@ -97,6 +107,8 @@ actions!(
         SelectWordRight,
         SelectToHome,
         SelectToEnd,
+        Undo,
+        Redo,
     ]
 );
 
@@ -120,6 +132,8 @@ pub struct InputState {
     pub(super) cursor: Entity<Cursor>,
     pub(super) masked: bool,
     pub(super) mask: SharedString,
+    history: History,
+    ignore_history: bool,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -164,6 +178,8 @@ impl InputState {
             should_auto_scroll: false,
             masked: false,
             mask: SharedString::new("•"),
+            history: History::new(),
+            ignore_history: false,
             cursor,
             _subscriptions,
         }
@@ -184,6 +200,7 @@ impl InputState {
     /// Set the initial value
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
         self.value = value.into();
+        self.history.clear();
         self
     }
 
@@ -457,6 +474,50 @@ impl InputState {
             let selected_text = self.value[self.selected_range.clone()].to_string();
             cx.write_to_clipboard(ClipboardItem::new_string(selected_text));
             self.replace_text_in_range(None, "", window, cx);
+        }
+    }
+
+    pub(super) fn undo(&mut self, _: &Undo, window: &mut Window, cx: &mut Context<Self>) {
+        self.ignore_history = true;
+        if let Some(change) = self.history.undo() {
+            self.replace_text_in_range(Some(change.range()), &change.text(), window, cx);
+        }
+        self.ignore_history = false;
+    }
+
+    pub(super) fn redo(&mut self, _: &Redo, window: &mut Window, cx: &mut Context<Self>) {
+        self.ignore_history = true;
+        if let Some(change) = self.history.redo() {
+            self.replace_text_in_range(Some(change.range()), &change.text(), window, cx);
+        }
+        self.ignore_history = false;
+    }
+
+    fn push_history(&mut self, new_text: &str, range: &Range<usize>) {
+        if self.ignore_history {
+            return;
+        }
+
+        if range.start == 0 && range.end == 0 && new_text.is_empty() {
+            return;
+        }
+
+        if range.start == range.end {
+            self.history.push(Change::Insert {
+                range: TextOps::range_to_utf16(&self.value, range),
+                text: new_text.to_string().into(),
+            });
+        } else if new_text.is_empty() {
+            self.history.push(Change::Delete {
+                range: TextOps::range_to_utf16(&self.value, range),
+                text: self.value[range.start..range.end].to_string().into(),
+            })
+        } else {
+            self.history.push(Change::Replace {
+                range: TextOps::range_to_utf16(&self.value, range),
+                new_text: new_text.to_string().into(),
+                old_text: self.value[range.start..range.end].to_string().into(),
+            });
         }
     }
 
@@ -864,6 +925,8 @@ impl EntityInputHandler for InputState {
             .or(self.marked_range.clone())
             .unwrap_or(self.selected_range.clone());
 
+        self.push_history(new_text, &range);
+
         let new_value = format!(
             "{}{}{}",
             &self.value[0..range.start],
@@ -895,6 +958,8 @@ impl EntityInputHandler for InputState {
             .map(|range_utf16| TextOps::range_from_utf16(&self.value, range_utf16))
             .or(self.marked_range.clone())
             .unwrap_or(self.selected_range.clone());
+
+        self.push_history(new_text, &range);
 
         let new_value = format!(
             "{}{}{}",

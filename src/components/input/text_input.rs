@@ -82,6 +82,8 @@ impl RenderOnce for TextInput {
             .on_action(window.listener_for(&self.state, InputState::select_word_right))
             .on_action(window.listener_for(&self.state, InputState::select_to_home))
             .on_action(window.listener_for(&self.state, InputState::select_to_end))
+            .on_action(window.listener_for(&self.state, InputState::undo))
+            .on_action(window.listener_for(&self.state, InputState::redo))
             .on_mouse_down(
                 MouseButton::Left,
                 window.listener_for(&self.state, InputState::on_mouse_down),
