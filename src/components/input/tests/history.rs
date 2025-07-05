@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod history {
-    use std::ops::Range;
-
     use crate::components::input::history::{Change, History};
+    use std::ops::Range;
 
     fn insert_text(history: &mut History, text: &str) {
         for (i, ch) in text.char_indices() {
@@ -59,7 +58,6 @@ mod history {
         let mut history = History::new();
         insert_text(&mut history, "abcdef");
 
-        history.prevent_merge();
         history.push(Change::Replace {
             range: 2..4,
             old_text: "cd".into(),
@@ -214,6 +212,275 @@ mod history {
             Change::Insert {
                 text: "quick brown fox".into(),
                 range: 0..0
+            }
+        );
+    }
+
+    #[test]
+    fn undo_redo_mixed() {
+        let mut history = History::new();
+        insert_text(&mut history, "Hello World!");
+        cut_text(&mut history, "Hello", 0..5);
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Insert {
+                text: "Hello".into(),
+                range: 0..0
+            }
+        );
+        assert_eq!(undo.selection_range(), 0..5);
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Delete {
+                range: 0..5,
+                text: "Hello".into(),
+            }
+        );
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Insert {
+                text: "Hello".into(),
+                range: 0..0
+            }
+        );
+        assert_eq!(undo.selection_range(), 0..5);
+    }
+
+    #[test]
+    fn undo_clear() {
+        let mut history = History::new();
+        insert_text(&mut history, "tree");
+
+        history.push(Change::Delete {
+            text: "r".into(),
+            range: 1..2,
+        });
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Insert {
+                text: "r".into(),
+                range: 1..1
+            }
+        );
+        assert_eq!(undo.selection_range(), 1..2);
+
+        history.push(Change::Insert {
+            text: "s".into(),
+            range: 4..4,
+        });
+
+        assert!(history.redo().is_none())
+    }
+
+    #[test]
+    fn write_delete_type() {
+        let mut history = History::new();
+        insert_text(&mut history, "world");
+
+        history.push(Change::Delete {
+            text: "ld".into(),
+            range: 3..5,
+        });
+
+        history.push(Change::Insert {
+            range: 3..3,
+            text: "l".into(),
+        });
+        history.push(Change::Insert {
+            range: 4..4,
+            text: "d".into(),
+        });
+        history.push(Change::Insert {
+            range: 5..5,
+            text: "w".into(),
+        });
+        history.push(Change::Insert {
+            range: 6..6,
+            text: "i".into(),
+        });
+        history.push(Change::Insert {
+            range: 7..7,
+            text: "d".into(),
+        });
+        history.push(Change::Insert {
+            range: 8..8,
+            text: "e".into(),
+        });
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Replace {
+                old_text: "ldwide".into(),
+                new_text: "ld".into(),
+                range: 3..9,
+            }
+        );
+        assert_eq!(undo.selection_range(), 3..5);
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Delete {
+                text: "".into(),
+                range: 0..5
+            }
+        );
+        assert_eq!(undo.selection_range(), 0..0);
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Insert {
+                text: "world".into(),
+                range: 0..0
+            }
+        );
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Replace {
+                old_text: "ld".into(),
+                new_text: "ldwide".into(),
+                range: 3..5,
+            }
+        );
+    }
+
+    #[test]
+    fn select_all_replace() {
+        let mut history = History::new();
+        insert_text(&mut history, "important note");
+
+        history.push(Change::Replace {
+            range: 0..14,
+            old_text: "important note".into(),
+            new_text: "R".into(),
+        });
+
+        history.push(Change::Insert {
+            range: 1..1,
+            text: "E".into(),
+        });
+        history.push(Change::Insert {
+            range: 2..2,
+            text: "M".into(),
+        });
+        history.push(Change::Insert {
+            range: 3..3,
+            text: "O".into(),
+        });
+        history.push(Change::Insert {
+            range: 4..4,
+            text: "V".into(),
+        });
+        history.push(Change::Insert {
+            range: 5..5,
+            text: "E".into(),
+        });
+        history.push(Change::Insert {
+            range: 6..6,
+            text: "D".into(),
+        });
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Replace {
+                old_text: "REMOVED".into(),
+                new_text: "important note".into(),
+                range: 0..7,
+            }
+        );
+        assert_eq!(undo.selection_range(), 0..14);
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Delete {
+                text: "".into(),
+                range: 0..14
+            }
+        );
+        assert_eq!(undo.selection_range(), 0..0);
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Insert {
+                text: "important note".into(),
+                range: 0..0
+            }
+        );
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Replace {
+                old_text: "important note".into(),
+                new_text: "REMOVED".into(),
+                range: 0..14,
+            }
+        );
+    }
+
+    #[test]
+    fn emojis() {
+        let mut history = History::new();
+        insert_text(&mut history, "hello 👋 world");
+
+        history.push(Change::Replace {
+            range: 6..10,
+            old_text: "👋".into(),
+            new_text: "🌍".into(),
+        });
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Replace {
+                range: 6..10,
+                old_text: "🌍".into(),
+                new_text: "👋".into(),
+            }
+        );
+        assert_eq!(undo.selection_range(), 6..10);
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Delete {
+                text: "".into(),
+                range: 0..16
+            }
+        );
+        assert_eq!(undo.selection_range(), 0..0);
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Insert {
+                text: "hello 👋 world".into(),
+                range: 0..0
+            }
+        );
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Replace {
+                range: 6..10,
+                old_text: "👋".into(),
+                new_text: "🌍".into(),
             }
         );
     }

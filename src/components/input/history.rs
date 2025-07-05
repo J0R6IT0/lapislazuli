@@ -44,7 +44,7 @@ impl Change {
     pub fn text(&self) -> SharedString {
         match self {
             Change::Insert { text, .. } => text.clone(),
-            Change::Delete { text, .. } => text.clone(),
+            Change::Delete { .. } => SharedString::new(""),
             Change::Replace { new_text, .. } => new_text.clone(),
         }
     }
@@ -122,7 +122,7 @@ impl Change {
                 range: r1.start..(r1.end.max(r2.end)),
                 text: SharedString::from(format!("{}{}", t1, t2)),
             }),
-            (
+            /*(
                 Change::Insert {
                     range: r1,
                     text: t1,
@@ -132,10 +132,14 @@ impl Change {
                     old_text,
                     new_text,
                 },
-            ) if t1.ends_with(old_text.as_ref()) => Some(Change::Insert {
-                text: SharedString::from(format!("{}{}", &t1[r1.start..r2.start], new_text)),
-                range: r1,
-            }),
+            ) if t1.ends_with(old_text.as_ref()) => {
+                println!("t1: {t1}");
+                println!("old_text: {old_text}");
+                Some(Change::Insert {
+                    text: SharedString::from(format!("{}{}", &t1[r1.start..r2.start], new_text)),
+                    range: r1,
+                })
+            }*/
             (
                 Change::Replace {
                     range: r1,
