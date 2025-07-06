@@ -62,6 +62,7 @@ mod history {
             range: 2..4,
             old_text: "cd".into(),
             new_text: "X".into(),
+            marked: false,
         });
         history.push(Change::Insert {
             text: "Y".into(),
@@ -75,6 +76,7 @@ mod history {
                 range: 2..4,
                 old_text: "XY".into(),
                 new_text: "cd".into(),
+                marked: false,
             }
         );
         assert_eq!(undo.selection_range(), 2..4);
@@ -105,6 +107,7 @@ mod history {
                 range: 2..4,
                 old_text: "cd".into(),
                 new_text: "XY".into(),
+                marked: false,
             }
         );
     }
@@ -183,6 +186,7 @@ mod history {
             range: 6..11,
             old_text: "brown".into(),
             new_text: "brown".into(),
+            marked: false,
         });
 
         let undo = history.undo().unwrap();
@@ -192,6 +196,7 @@ mod history {
                 range: 6..11,
                 old_text: "brown".into(),
                 new_text: "brown".into(),
+                marked: false,
             }
         );
         assert_eq!(undo.selection_range(), 6..11);
@@ -322,6 +327,7 @@ mod history {
                 old_text: "ldwide".into(),
                 new_text: "ld".into(),
                 range: 3..9,
+                marked: false,
             }
         );
         assert_eq!(undo.selection_range(), 3..5);
@@ -352,6 +358,7 @@ mod history {
                 old_text: "ld".into(),
                 new_text: "ldwide".into(),
                 range: 3..5,
+                marked: false,
             }
         );
     }
@@ -365,6 +372,7 @@ mod history {
             range: 0..14,
             old_text: "important note".into(),
             new_text: "R".into(),
+            marked: false,
         });
 
         history.push(Change::Insert {
@@ -399,6 +407,7 @@ mod history {
                 old_text: "REMOVED".into(),
                 new_text: "important note".into(),
                 range: 0..7,
+                marked: false,
             }
         );
         assert_eq!(undo.selection_range(), 0..14);
@@ -429,6 +438,7 @@ mod history {
                 old_text: "important note".into(),
                 new_text: "REMOVED".into(),
                 range: 0..14,
+                marked: false,
             }
         );
     }
@@ -442,6 +452,7 @@ mod history {
             range: 6..10,
             old_text: "👋".into(),
             new_text: "🌍".into(),
+            marked: false,
         });
 
         let undo = history.undo().unwrap();
@@ -451,6 +462,7 @@ mod history {
                 range: 6..10,
                 old_text: "🌍".into(),
                 new_text: "👋".into(),
+                marked: false,
             }
         );
         assert_eq!(undo.selection_range(), 6..10);
@@ -481,6 +493,7 @@ mod history {
                 range: 6..10,
                 old_text: "👋".into(),
                 new_text: "🌍".into(),
+                marked: false,
             }
         );
     }

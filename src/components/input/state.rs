@@ -522,6 +522,8 @@ impl InputState {
             return;
         }
 
+        let marked = self.marked_range.is_some();
+
         if range.start == range.end {
             self.history.push(Change::Insert {
                 range: range.clone(),
@@ -537,6 +539,7 @@ impl InputState {
                 range: range.clone(),
                 new_text: new_text.to_string().into(),
                 old_text: self.value[range.start..range.end].to_string().into(),
+                marked,
             });
         }
     }

@@ -15,6 +15,7 @@ pub enum Change {
         range: Range<usize>,
         old_text: SharedString,
         new_text: SharedString,
+        marked: bool,
     },
 }
 
@@ -33,10 +34,12 @@ impl Change {
                 range,
                 old_text,
                 new_text,
+                marked,
             } => Change::Replace {
                 range: range.start..range.start + new_text.len(),
                 old_text: new_text,
                 new_text: old_text,
+                marked,
             },
         }
     }
@@ -95,6 +98,7 @@ impl Change {
                 range: r1.clone(),
                 old_text: t1,
                 new_text: t2.clone(),
+                marked: false,
             }),
             (
                 Change::Delete {
@@ -122,35 +126,57 @@ impl Change {
                 range: r1.start..(r1.end.max(r2.end)),
                 text: SharedString::from(format!("{}{}", t1, t2)),
             }),
-            /*(
-                Change::Insert {
-                    range: r1,
-                    text: t1,
-                },
-                Change::Replace {
-                    range: r2,
-                    old_text,
-                    new_text,
-                },
-            ) if t1.ends_with(old_text.as_ref()) => {
-                println!("t1: {t1}");
-                println!("old_text: {old_text}");
-                Some(Change::Insert {
-                    text: SharedString::from(format!("{}{}", &t1[r1.start..r2.start], new_text)),
-                    range: r1,
-                })
-            }*/
             (
                 Change::Replace {
                     range: r1,
                     new_text: t1,
                     old_text,
+                    ..
                 },
                 Change::Insert { text: t2, .. },
             ) => Some(Change::Replace {
                 range: r1,
                 new_text: SharedString::from(format!("{}{}", t1, t2)),
                 old_text,
+                marked: false,
+            }),
+            (
+                Change::Insert {
+                    text: t1,
+                    range: r1,
+                },
+                Change::Replace {
+                    new_text,
+                    old_text,
+                    marked,
+                    ..
+                },
+            ) if *marked && t1.ends_with(old_text.as_ref()) => Some(Change::Insert {
+                range: r1,
+                text: SharedString::from(format!(
+                    "{}{}",
+                    &t1[..t1.len() - old_text.len()],
+                    new_text
+                )),
+            }),
+            (
+                Change::Replace {
+                    range: r1,
+                    new_text: nt1,
+                    old_text: ot1,
+                    ..
+                },
+                Change::Replace {
+                    new_text: nt2,
+                    old_text: ot2,
+                    marked,
+                    ..
+                },
+            ) if *marked && nt1.ends_with(ot2.as_ref()) => Some(Change::Replace {
+                range: r1,
+                old_text: ot1,
+                new_text: SharedString::from(format!("{}{}", &nt1[..nt1.len() - ot2.len()], nt2)),
+                marked: false,
             }),
             _ => None,
         }
