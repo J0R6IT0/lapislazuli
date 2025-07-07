@@ -1,5 +1,6 @@
 use crate::components::input::state::InputState;
 use gpui::*;
+use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub const CURSOR_WIDTH: f32 = 1.0;
@@ -111,7 +112,7 @@ impl TextElement {
         &self,
         display_text: &str,
         base_run: TextRun,
-        marked_range: Option<&std::ops::Range<usize>>,
+        marked_range: Option<&Range<usize>>,
         is_masked: bool,
     ) -> Vec<TextRun> {
         // For masked text, we've already excluded marked text from display_text,
@@ -176,7 +177,7 @@ impl TextElement {
         &self,
         bounds: Bounds<Pixels>,
         line: &ShapedLine,
-        selected_range: &std::ops::Range<usize>,
+        selected_range: &Range<usize>,
         scroll_offset: Point<Pixels>,
     ) -> PaintQuad {
         fill(
