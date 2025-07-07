@@ -63,24 +63,6 @@ impl TextElement {
 
     /// Prepares the display text and color based on content and placeholder
     fn prepare_display_text(&self, input: &InputState, text_color: Hsla) -> (SharedString, Hsla) {
-        /*let display_text = input.display_text();
-        let color = if input.value.is_empty() {
-            input.placeholder_color
-        } else {
-            text_color
-        };
-        (display_text, color);
-
-        if input.value.is_empty() {
-            (input.placeholder_text.clone(), input.placeholder_color)
-        } else if !input.masked {
-            (input.value.clone(), text_color)
-        } else if input.mask.is_empty() {
-            (SharedString::new(""), text_color)
-        } else {
-
-        }*/
-
         if input.value.is_empty() {
             return (input.placeholder.clone(), input.placeholder_color);
         }
