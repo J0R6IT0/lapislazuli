@@ -569,4 +569,69 @@ mod history {
             }
         );
     }
+
+    #[test]
+    fn marked_replace_sequence() {
+        let mut history = History::new();
+        insert_text(&mut history, "hello fucking world");
+
+        history.push(Change::Replace {
+            range: 6..13,
+            old_text: "fucking".into(),
+            new_text: "´".into(),
+            marked: false,
+        });
+        history.push(Change::Replace {
+            range: 6..8,
+            old_text: "´".into(),
+            new_text: "á".into(),
+            marked: true,
+        });
+        history.push(Change::Insert {
+            range: 8..8,
+            text: "wesome".into(),
+        });
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Replace {
+                range: 6..14,
+                old_text: "áwesome".into(),
+                new_text: "fucking".into(),
+                marked: false,
+            }
+        );
+        assert_eq!(undo.selection_range(), 6..13);
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Delete {
+                range: 0..19,
+                text: "".into()
+            }
+        );
+        assert_eq!(undo.selection_range(), 0..0);
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Insert {
+                range: 0..0,
+                text: "hello fucking world".into()
+            }
+        );
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Replace {
+                range: 6..13,
+                old_text: "fucking".into(),
+                new_text: "áwesome".into(),
+                marked: false,
+            }
+        );
+    }
 }
