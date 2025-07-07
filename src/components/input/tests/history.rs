@@ -497,4 +497,76 @@ mod history {
             }
         );
     }
+
+    #[test]
+    fn simple_marked() {
+        let mut history = History::new();
+
+        history.push(Change::Insert {
+            range: 0..0,
+            text: "´".into(),
+        });
+
+        history.push(Change::Replace {
+            range: 0..2,
+            old_text: "´".into(),
+            new_text: "á".into(),
+            marked: true,
+        });
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Delete {
+                text: "".into(),
+                range: 0..2
+            }
+        );
+        assert_eq!(undo.selection_range(), 0..0);
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Insert {
+                text: "á".into(),
+                range: 0..0
+            }
+        );
+    }
+
+    #[test]
+    fn marked_sequence() {
+        let mut history = History::new();
+        insert_text(&mut history, "hello w´");
+
+        history.push(Change::Replace {
+            range: 7..9,
+            old_text: "´".into(),
+            new_text: "ó".into(),
+            marked: true,
+        });
+        history.push(Change::Insert {
+            range: 9..9,
+            text: "rld".into(),
+        });
+
+        let undo = history.undo().unwrap();
+        assert_eq!(
+            undo,
+            Change::Delete {
+                range: 0..12,
+                text: "".into()
+            }
+        );
+        assert_eq!(undo.selection_range(), 0..0);
+
+        let redo = history.redo().unwrap();
+        assert_eq!(
+            redo,
+            Change::Insert {
+                text: "hello wórld".into(),
+                range: 0..0
+            }
+        );
+    }
 }
