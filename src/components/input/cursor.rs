@@ -52,7 +52,6 @@ impl Cursor {
         self.visible = !self.visible;
         cx.notify();
 
-        // Schedule the next blink
         let epoch = self.next_epoch();
         cx.spawn(async move |this, cx| {
             Timer::after(INTERVAL).await;
@@ -64,7 +63,6 @@ impl Cursor {
     }
 
     pub fn visible(&self) -> bool {
-        // Keep showing the cursor if paused
         self.paused || self.visible
     }
 

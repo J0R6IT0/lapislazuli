@@ -92,6 +92,13 @@ impl Showcase {
         self.button_click_count = 0;
         cx.notify();
     }
+
+    fn toggle_masked<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
+        self.text_state.update(cx, |state, _| {
+            state.masked(!state.is_masked());
+        });
+        cx.notify();
+    }
 }
 
 impl Render for Showcase {
@@ -543,7 +550,6 @@ impl Render for Showcase {
                             )
                             .child(
                                 TextInput::new(self.text_state.clone())
-                                    .set_masked(disabled, cx)
                                     .border_color(rgb(0xd1d5db))
                                     .focus(|this| this.border_color(rgb(0x3b82f6)))
                                     .text_color(rgb(0x374151))
@@ -557,7 +563,7 @@ impl Render for Showcase {
                                     .gap(px(12.))
                                     .leading(
                                         Button::new("search_leading")
-                                            .on_click(cx.listener(Self::toggle_disabled))
+                                            .on_click(cx.listener(Self::toggle_masked))
                                             .child(
                                                 h_flex_center()
                                                     .h(px(40.))

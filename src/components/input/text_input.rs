@@ -20,22 +20,6 @@ impl TextInput {
         }
     }
 
-    pub fn set_placeholder_color(self, color: impl Into<Hsla>, cx: &mut impl AppContext) -> Self {
-        self.state.update(cx, |this, cx| {
-            this.placeholder_color = color.into();
-            cx.notify();
-        });
-        self
-    }
-
-    pub fn set_masked(self, masked: bool, cx: &mut impl AppContext) -> Self {
-        self.state.update(cx, |this, cx| {
-            this.masked(masked);
-            cx.notify();
-        });
-        self
-    }
-
     pub fn leading(mut self, element: impl IntoElement) -> Self {
         self.leading = Some(element.into_any_element());
         self

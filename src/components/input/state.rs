@@ -204,6 +204,10 @@ impl InputState {
         self
     }
 
+    pub fn is_masked(&self) -> bool {
+        self.masked
+    }
+
     /// Set whether the input is masked (e.g., for passwords)
     pub fn masked(&mut self, masked: bool) -> &Self {
         if self.masked != masked {
