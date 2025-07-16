@@ -1,0 +1,4 @@
+[toolchain]
+# https://rust-lang.github.io/rustup/concepts/profiles.html
+profile = "minimal"
+channel = "1.88.0"
