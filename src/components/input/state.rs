@@ -730,10 +730,6 @@ impl InputState {
 
     /// Automatically scroll to keep cursor visible
     pub(super) fn auto_scroll_to_cursor(&mut self, layout: &ShapedLine, bounds: Bounds<Pixels>) {
-        if !self.should_auto_scroll {
-            return;
-        }
-
         self.should_auto_scroll = false;
 
         let cursor_offset = self.display_cursor_offset();
