@@ -80,6 +80,7 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("ctrl-shift-z", Redo, Some(CONTEXT)),
         KeyBinding::new("cmd-z", Undo, Some(CONTEXT)),
         KeyBinding::new("cmd-shift-z", Redo, Some(CONTEXT)),
+        KeyBinding::new("enter", Enter, Some(CONTEXT)),
     ]);
 }
 
@@ -111,6 +112,7 @@ actions!(
         SelectToEnd,
         Undo,
         Redo,
+        Enter,
     ]
 );
 
@@ -170,6 +172,7 @@ impl RenderOnce for TextField {
             .on_action(window.listener_for(&self.state, TextFieldState::select_to_end))
             .on_action(window.listener_for(&self.state, TextFieldState::undo))
             .on_action(window.listener_for(&self.state, TextFieldState::redo))
+            .on_action(window.listener_for(&self.state, TextFieldState::enter))
             .on_mouse_down(
                 MouseButton::Left,
                 window.listener_for(&self.state, TextFieldState::on_mouse_down),

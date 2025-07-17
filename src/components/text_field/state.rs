@@ -9,8 +9,11 @@ use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
-#[derive(Clone)]
 pub struct InputEvent {
+    pub value: SharedString,
+}
+
+pub struct ChangeEvent {
     pub value: SharedString,
 }
 
@@ -21,6 +24,7 @@ pub struct InputEvent {
 pub struct TextFieldState {
     pub(super) focus_handle: FocusHandle,
     pub(super) value: SharedString,
+    pub(super) emitted_value: SharedString,
     pub(super) placeholder: SharedString,
     pub(super) placeholder_color: Hsla,
     pub(super) selected_range: Range<usize>,
@@ -68,6 +72,7 @@ impl TextFieldState {
         Self {
             focus_handle,
             value: SharedString::new(""),
+            emitted_value: SharedString::new(""),
             placeholder: SharedString::new(""),
             placeholder_color: hsla(0., 0., 0.5, 0.5),
             selected_range: 0..0,
@@ -100,6 +105,7 @@ impl TextFieldState {
     /// Set the value of the text field
     pub fn set_value(&mut self, value: impl Into<SharedString>) {
         self.value = value.into();
+        self.emitted_value = self.value.clone();
         self.history.clear();
     }
 
@@ -140,7 +146,19 @@ impl TextFieldState {
         self.history.prevent_merge();
         self.cursor.update(cx, |cursor, cx| {
             cursor.stop(cx);
-        })
+        });
+        self.on_change(cx);
+    }
+
+    fn on_change(&mut self, cx: &mut Context<Self>) {
+        if self.value == self.emitted_value {
+            return;
+        }
+
+        self.emitted_value = self.value.clone();
+        cx.emit(ChangeEvent {
+            value: self.value.clone(),
+        });
     }
 
     fn pause_cursor_blink(&mut self, cx: &mut Context<Self>) {
@@ -493,6 +511,10 @@ impl TextFieldState {
             self.selected_range = cursor_pos..self.value.len();
         }
         self.replace_text_in_range(None, "", window, cx);
+    }
+
+    pub(super) fn enter(&mut self, _: &Enter, _: &mut Window, cx: &mut Context<Self>) {
+        self.on_change(cx);
     }
 
     // ============================================================================
@@ -929,6 +951,7 @@ impl Focusable for TextFieldState {
 }
 
 impl EventEmitter<InputEvent> for TextFieldState {}
+impl EventEmitter<ChangeEvent> for TextFieldState {}
 
 impl Render for TextFieldState {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {

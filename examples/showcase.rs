@@ -9,7 +9,7 @@ use lapislazuli::{
         Button, Checkbox, Separator, Switch,
         progress::{Progress, ProgressFill, ProgressTrack},
         tabs::{Tabs, TabsTrigger},
-        text_field::{InputEvent, TextFieldState, init, text_field},
+        text_field::{ChangeEvent, InputEvent, TextFieldState, init, text_field},
     },
     primitives::{a, h_flex, h_flex_center, span, v_flex},
 };
@@ -45,8 +45,16 @@ impl Showcase {
 
         app.new(|cx| {
             cx.subscribe(&text_state, |_showcase, _state, event: &InputEvent, _cx| {
-                println!("Text changed: {}", event.value);
+                println!("On Input: {}", event.value);
             })
+            .detach();
+
+            cx.subscribe(
+                &text_state,
+                |_showcase, _state, event: &ChangeEvent, _cx| {
+                    println!("On Change: {}", event.value);
+                },
+            )
             .detach();
 
             Self {
