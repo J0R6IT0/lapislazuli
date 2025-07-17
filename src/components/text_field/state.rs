@@ -9,10 +9,10 @@ use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
-/// State management for text input components
+/// State management for text field components
 ///
 /// Handles text editing, cursor positioning, selection, and scrolling
-/// for single-line text input fields.
+/// for single-line text fields.
 pub struct TextFieldState {
     pub(super) focus_handle: FocusHandle,
     pub(super) value: SharedString,
@@ -39,7 +39,7 @@ impl TextFieldState {
     // Constructor and Builder Methods
     // ============================================================================
 
-    /// Create a new InputState with default values
+    /// Create a new [`TextFieldState`] with default values
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let cursor = cx.new(|_| Cursor::new());
         let focus_handle = cx.focus_handle();
@@ -92,18 +92,18 @@ impl TextFieldState {
         self.placeholder_color = color.into();
     }
 
-    /// Set the value of the input
+    /// Set the value of the text field
     pub fn set_value(&mut self, value: impl Into<SharedString>) {
         self.value = value.into();
         self.history.clear();
     }
 
-    /// Whether the input is masked (e.g., for passwords)
+    /// Whether the text field is masked (e.g., for passwords)
     pub fn is_masked(&self) -> bool {
         self.masked
     }
 
-    /// Set whether the input is masked (e.g., for passwords)
+    /// Mask or unmask the text field (e.g., for passwords)
     pub fn set_masked(&mut self, masked: bool) {
         if self.masked != masked {
             self.masked = masked;
@@ -188,12 +188,12 @@ impl TextFieldState {
         self.move_to(new_offset, cx);
     }
 
-    /// Move cursor to the beginning of the input
+    /// Move cursor to the beginning of the field
     pub(super) fn home(&mut self, _: &Home, _: &mut Window, cx: &mut Context<Self>) {
         self.move_to(0, cx);
     }
 
-    /// Move cursor to the end of the input
+    /// Move cursor to the end of the field
     pub(super) fn end(&mut self, _: &End, _: &mut Window, cx: &mut Context<Self>) {
         self.move_to(self.value.len(), cx);
     }
@@ -255,7 +255,7 @@ impl TextFieldState {
         self.select_to(new_offset, cx);
     }
 
-    /// Select from cursor to beginning of input
+    /// Select from cursor to beginning of field
     pub(super) fn select_to_home(
         &mut self,
         _: &SelectToHome,
@@ -265,7 +265,7 @@ impl TextFieldState {
         self.select_to(0, cx);
     }
 
-    /// Select from cursor to end of input
+    /// Select from cursor to end of field
     pub(super) fn select_to_end(
         &mut self,
         _: &SelectToEnd,
@@ -275,7 +275,7 @@ impl TextFieldState {
         self.select_to(self.value.len(), cx);
     }
 
-    /// Select all text in the input
+    /// Select all text in the field
     pub(super) fn select_all(&mut self, _: &SelectAll, _: &mut Window, cx: &mut Context<Self>) {
         self.move_to(0, cx);
         self.select_to(self.value.len(), cx);
@@ -337,7 +337,7 @@ impl TextFieldState {
     pub(super) fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
             self.history.prevent_merge();
-            // Replace newlines with spaces for single-line input
+            // Replace newlines with spaces for single-line text fields
             self.replace_text_in_range(None, &text.replace('\n', " "), window, cx);
         }
     }
@@ -462,7 +462,7 @@ impl TextFieldState {
         self.replace_text_in_range(None, "", window, cx);
     }
 
-    /// Delete from cursor to beginning of input
+    /// Delete from cursor to beginning of text field
     pub(super) fn delete_to_beginning(
         &mut self,
         _: &DeleteToBeginning,
@@ -476,7 +476,7 @@ impl TextFieldState {
         self.replace_text_in_range(None, "", window, cx);
     }
 
-    /// Delete from cursor to end of input
+    /// Delete from cursor to end of text field
     pub(super) fn delete_to_end(
         &mut self,
         _: &DeleteToEnd,
@@ -594,7 +594,7 @@ impl TextFieldState {
             offset.x = offset.x.max(px(0.0));
         }
 
-        // Disable vertical scrolling for single-line input
+        // Disable vertical scrolling for single-line text fields
         offset.y = px(0.0);
 
         self.scroll_handle.set_offset(offset);
@@ -656,7 +656,7 @@ impl TextFieldState {
         self.actual_to_display_offset(self.cursor_offset())
     }
 
-    /// Convert actual text range to display text range for masked inputs
+    /// Convert actual text range to display text range for masked text fields
     pub(super) fn display_selection_range(&self) -> std::ops::Range<usize> {
         let start = self.actual_to_display_offset(self.selected_range.start);
         let end = self.actual_to_display_offset(self.selected_range.end);

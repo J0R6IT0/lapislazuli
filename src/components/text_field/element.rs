@@ -7,7 +7,7 @@ pub const CURSOR_WIDTH: f32 = 1.0;
 const MARKED_TEXT_UNDERLINE_THICKNESS: f32 = 1.0;
 const SELECTION_COLOR: u32 = 0x3390FF80;
 
-/// A text input element that renders editable text with cursor and selection support.
+/// A text field element that renders editable text with cursor and selection support.
 ///
 /// This element handles:
 /// - Text rendering with proper font styling
@@ -180,8 +180,8 @@ impl Element for TextElement {
             .shape_line(display_text, font_size, &runs);
 
         if state.should_auto_scroll {
-            self.state.update(app, |input, _| {
-                input.auto_scroll_to_cursor(&line, bounds);
+            self.state.update(app, |state, _| {
+                state.auto_scroll_to_cursor(&line, bounds);
             });
         }
 
@@ -263,9 +263,9 @@ impl Element for TextElement {
             }
         }
 
-        self.state.update(app, |input, _cx| {
-            input.last_layout = Some(line);
-            input.last_bounds = Some(bounds);
+        self.state.update(app, |state, _cx| {
+            state.last_layout = Some(line);
+            state.last_bounds = Some(bounds);
         });
     }
 }
