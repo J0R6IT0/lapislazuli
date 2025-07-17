@@ -9,6 +9,11 @@ use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[derive(Clone)]
+pub struct InputEvent {
+    pub value: SharedString,
+}
+
 /// State management for text field components
 ///
 /// Handles text editing, cursor positioning, selection, and scrolling
@@ -828,6 +833,9 @@ impl EntityInputHandler for TextFieldState {
         self.last_layout = None;
         self.last_bounds = None;
 
+        cx.emit(InputEvent {
+            value: self.value.clone(),
+        });
         self.update_scroll_offset(None, cx);
     }
 
@@ -872,6 +880,9 @@ impl EntityInputHandler for TextFieldState {
             });
 
         self.should_auto_scroll = true;
+        cx.emit(InputEvent {
+            value: self.value.clone(),
+        });
         cx.notify();
     }
 
@@ -916,6 +927,8 @@ impl Focusable for TextFieldState {
         self.focus_handle.clone()
     }
 }
+
+impl EventEmitter<InputEvent> for TextFieldState {}
 
 impl Render for TextFieldState {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {

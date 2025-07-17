@@ -1,11 +1,15 @@
-use gpui::*;
+use gpui::{
+    Animation, AnimationExt, App, AppContext, Application, Context, Entity, FocusHandle, Focusable,
+    FontWeight, InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement,
+    Styled, Window, WindowOptions, px, relative, rems, rgb, rgba,
+};
 use lapislazuli::{
     Disableable, ParentElementWithContext,
     components::{
         Button, Checkbox, Separator, Switch,
         progress::{Progress, ProgressFill, ProgressTrack},
         tabs::{Tabs, TabsTrigger},
-        text_field::{TextFieldState, init, text_field},
+        text_field::{InputEvent, TextFieldState, init, text_field},
     },
     primitives::{a, h_flex, h_flex_center, span, v_flex},
 };
@@ -39,14 +43,21 @@ impl Showcase {
             state
         });
 
-        app.new(|cx| Self {
-            text_state,
-            focus_handle: cx.focus_handle(),
-            progress_value: 65.0,
-            previous_progress_value: 65.0,
-            disabled: false,
-            button_click_count: 0,
-            selected_tab_index: 0,
+        app.new(|cx| {
+            cx.subscribe(&text_state, |_showcase, _state, event: &InputEvent, _cx| {
+                println!("Text changed: {}", event.value);
+            })
+            .detach();
+
+            Self {
+                text_state,
+                focus_handle: cx.focus_handle(),
+                progress_value: 65.0,
+                previous_progress_value: 65.0,
+                disabled: false,
+                button_click_count: 0,
+                selected_tab_index: 0,
+            }
         })
     }
 
