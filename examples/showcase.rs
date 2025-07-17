@@ -1,21 +1,20 @@
-use std::time::Duration;
-
 use gpui::*;
 use lapislazuli::{
     Disableable, ParentElementWithContext,
     components::{
         Button, Checkbox, Separator, Switch,
-        input::{InputState, TextInput, init},
         progress::{Progress, ProgressFill, ProgressTrack},
         tabs::{Tabs, TabsTrigger},
+        text_field::{TextFieldState, init, text_field},
     },
     primitives::{a, h_flex, h_flex_center, span, v_flex},
 };
+use std::time::Duration;
 
 struct Showcase {
     progress_value: f32,
     previous_progress_value: f32,
-    text_state: Entity<InputState>,
+    text_state: Entity<TextFieldState>,
     focus_handle: FocusHandle,
     disabled: bool,
     button_click_count: u32,
@@ -33,7 +32,7 @@ impl Showcase {
         init(app);
 
         let text_state = app.new(|cx| {
-            InputState::new(window, cx)
+            TextFieldState::new(window, cx)
                 .placeholder("Try typing something here...")
                 .placeholder_color(rgb(0x9ca3af))
                 .mask("😎")
@@ -549,7 +548,7 @@ impl Render for Showcase {
                                     .text_size(rems(0.95))
                             )
                             .child(
-                                TextInput::new(self.text_state.clone())
+                                text_field(self.text_state.clone())
                                     .border_color(rgb(0xd1d5db))
                                     .focus(|this| this.border_color(rgb(0x3b82f6)))
                                     .text_color(rgb(0x374151))

@@ -1,122 +1,19 @@
-use crate::components::input::{
+use crate::components::text_field::{
     cursor::Cursor,
     element::{CURSOR_WIDTH, TextElement},
     history::{Change, History},
     text_ops::TextOps,
+    *,
 };
 use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
-/// Context identifier for input key bindings
-pub(super) const CONTEXT: &str = "input";
-
-/// Initialize input key bindings and actions
-pub fn init(cx: &mut App) {
-    cx.bind_keys([
-        // Basic cursor movement
-        KeyBinding::new("left", Left, Some(CONTEXT)),
-        KeyBinding::new("right", Right, Some(CONTEXT)),
-        KeyBinding::new("home", Home, Some(CONTEXT)),
-        KeyBinding::new("end", End, Some(CONTEXT)),
-        // Word movement
-        KeyBinding::new("alt-left", WordLeft, Some(CONTEXT)),
-        KeyBinding::new("alt-right", WordRight, Some(CONTEXT)),
-        // macOS cursor movement alternatives
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("ctrl-a", Home, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("cmd-left", Home, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("ctrl-e", End, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("cmd-right", End, Some(CONTEXT)),
-        // Text selection
-        KeyBinding::new("shift-left", SelectLeft, Some(CONTEXT)),
-        KeyBinding::new("shift-right", SelectRight, Some(CONTEXT)),
-        KeyBinding::new("cmd-a", SelectAll, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-a", SelectAll, Some(CONTEXT)),
-        // Word selection
-        KeyBinding::new("alt-shift-left", SelectWordLeft, Some(CONTEXT)),
-        KeyBinding::new("alt-shift-right", SelectWordRight, Some(CONTEXT)),
-        // Line selection
-        KeyBinding::new("shift-home", SelectToHome, Some(CONTEXT)),
-        KeyBinding::new("shift-end", SelectToEnd, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("cmd-shift-left", SelectToHome, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("cmd-shift-right", SelectToEnd, Some(CONTEXT)),
-        // Basic deletion
-        KeyBinding::new("backspace", Backspace, Some(CONTEXT)),
-        KeyBinding::new("delete", Delete, Some(CONTEXT)),
-        // Word deletion
-        KeyBinding::new("alt-backspace", DeleteWordLeft, Some(CONTEXT)),
-        KeyBinding::new("alt-delete", DeleteWordRight, Some(CONTEXT)),
-        // Line deletion
-        KeyBinding::new("cmd-backspace", DeleteToBeginning, Some(CONTEXT)),
-        KeyBinding::new("cmd-delete", DeleteToEnd, Some(CONTEXT)),
-        // Clipboard operations
-        KeyBinding::new("cmd-c", Copy, Some(CONTEXT)),
-        KeyBinding::new("cmd-v", Paste, Some(CONTEXT)),
-        KeyBinding::new("cmd-x", Cut, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-c", Copy, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-v", Paste, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-x", Cut, Some(CONTEXT)),
-        // Special features
-        KeyBinding::new("ctrl-cmd-space", ShowCharacterPalette, Some(CONTEXT)),
-        // Undo/Redo
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-z", Undo, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-y", Redo, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-shift-z", Redo, Some(CONTEXT)),
-        KeyBinding::new("cmd-z", Undo, Some(CONTEXT)),
-        KeyBinding::new("cmd-shift-z", Redo, Some(CONTEXT)),
-    ]);
-}
-
-actions!(
-    input,
-    [
-        Backspace,
-        Delete,
-        Left,
-        Right,
-        SelectLeft,
-        SelectRight,
-        SelectAll,
-        Home,
-        End,
-        ShowCharacterPalette,
-        Copy,
-        Paste,
-        Cut,
-        Clear,
-        DeleteWordLeft,
-        DeleteWordRight,
-        DeleteToBeginning,
-        DeleteToEnd,
-        WordLeft,
-        WordRight,
-        SelectWordLeft,
-        SelectWordRight,
-        SelectToHome,
-        SelectToEnd,
-        Undo,
-        Redo,
-    ]
-);
-
 /// State management for text input components
 ///
 /// Handles text editing, cursor positioning, selection, and scrolling
 /// for single-line text input fields.
-pub struct InputState {
+pub struct TextFieldState {
     pub(super) focus_handle: FocusHandle,
     pub(super) value: SharedString,
     pub(super) placeholder: SharedString,
@@ -137,7 +34,7 @@ pub struct InputState {
     _subscriptions: Vec<Subscription>,
 }
 
-impl InputState {
+impl TextFieldState {
     // ============================================================================
     // Constructor and Builder Methods
     // ============================================================================
@@ -149,11 +46,11 @@ impl InputState {
 
         let _subscriptions = vec![
             cx.observe(&cursor, |_, _, cx| cx.notify()),
-            cx.observe_window_activation(window, |input, window, cx| {
+            cx.observe_window_activation(window, |state, window, cx| {
                 if window.is_window_active() {
-                    let focus_handle = input.focus_handle.clone();
+                    let focus_handle = state.focus_handle.clone();
                     if focus_handle.is_focused(window) {
-                        input.cursor.update(cx, |cursor, cx| {
+                        state.cursor.update(cx, |cursor, cx| {
                             cursor.start(cx);
                         });
                     }
@@ -197,7 +94,7 @@ impl InputState {
         self
     }
 
-    /// Set the initial value
+    /// Set the value of the input
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
         self.value = value.into();
         self.history.clear();
@@ -212,29 +109,6 @@ impl InputState {
     pub fn masked(&mut self, masked: bool) -> &Self {
         if self.masked != masked {
             self.masked = masked;
-            self.should_auto_scroll = true;
-        }
-        self
-    }
-
-    /// Set whether the input is masked with a custom mask string
-    ///
-    /// When masked, the input will display the provided mask string repeated cyclically
-    /// to match the character count of the actual text.
-    ///
-    /// # Examples
-    ///
-    /// - `masked_with(true, "*")` - Traditional password masking with asterisks
-    /// - `masked_with(true, "•")` - Modern password masking with bullets
-    /// - `masked_with(true, "ab")` - Each character replaced with "ab", so "hello" becomes "ababababab"
-    /// - `masked_with(true, "***")` - Each character replaced with "***", so "test" becomes "************"
-    pub fn masked_with(mut self, masked: bool, mask: impl Into<SharedString>) -> Self {
-        let mask = mask.into();
-        let changed = self.masked != masked || self.mask != mask;
-
-        if changed {
-            self.masked = masked;
-            self.mask = mask;
             self.should_auto_scroll = true;
         }
         self
@@ -549,7 +423,7 @@ impl InputState {
     }
 
     /// Clear all text and reset state
-    pub(super) fn clear(&mut self, _: &Clear, _: &mut Window, cx: &mut Context<Self>) {
+    pub fn clear(&mut self) {
         self.value = "".into();
         self.selected_range = 0..0;
         self.selection_reversed = false;
@@ -559,7 +433,6 @@ impl InputState {
         self.selecting = false;
         self.should_auto_scroll = true;
         self.scroll_handle.set_offset(point(px(0.0), px(0.0)));
-        cx.notify();
     }
 
     /// Delete word to the left of cursor
@@ -900,7 +773,7 @@ impl InputState {
     }
 }
 
-impl EntityInputHandler for InputState {
+impl EntityInputHandler for TextFieldState {
     fn text_for_range(
         &mut self,
         range_utf16: Range<usize>,
@@ -1049,13 +922,13 @@ impl EntityInputHandler for InputState {
     }
 }
 
-impl Focusable for InputState {
+impl Focusable for TextFieldState {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus_handle.clone()
     }
 }
 
-impl Render for InputState {
+impl Render for TextFieldState {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .id("text-element")

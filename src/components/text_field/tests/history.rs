@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod history {
-    use crate::components::input::history::{Change, History};
+    use crate::components::text_field::history::{Change, History};
     use std::ops::Range;
 
     fn insert_text(history: &mut History, text: &str) {

@@ -1,4 +1,4 @@
-use crate::components::input::state::InputState;
+use crate::components::text_field::state::TextFieldState;
 use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
@@ -17,11 +17,11 @@ const SELECTION_COLOR: u32 = 0x3390FF80;
 /// - Placeholder text when empty
 /// - Marked text (IME composition) with underlines
 pub struct TextElement {
-    state: Entity<InputState>,
+    state: Entity<TextFieldState>,
 }
 
 impl TextElement {
-    pub fn new(state: Entity<InputState>) -> Self {
+    pub fn new(state: Entity<TextFieldState>) -> Self {
         Self { state }
     }
 }
@@ -41,7 +41,7 @@ impl IntoElement for TextElement {
 }
 
 impl TextElement {
-    fn prepare_display_text(&self, state: &InputState, text_color: Hsla) -> (SharedString, Hsla) {
+    fn prepare_display_text(&self, state: &TextFieldState, text_color: Hsla) -> (SharedString, Hsla) {
         if state.value.is_empty() {
             return (state.placeholder.clone(), state.placeholder_color);
         }

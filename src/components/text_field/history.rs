@@ -71,87 +71,83 @@ impl Change {
     }
 
     fn merge_with(self, other: &Change) -> Option<Change> {
+        use Change::*;
+
         match (self, other) {
             (
-                Change::Insert {
+                Insert {
                     range: r1,
                     text: t1,
                 },
-                Change::Insert {
+                Insert {
                     range: r2,
                     text: t2,
                 },
-            ) if r1.start + t1.len() == r2.start => Some(Change::Insert {
+            ) if r1.start + t1.len() == r2.start => Some(Insert {
                 range: r1.start..r1.start,
                 text: SharedString::from(format!("{}{}", t1, t2)),
             }),
             (
-                Change::Delete {
+                Delete {
                     range: r1,
                     text: t1,
                 },
-                Change::Insert {
+                Insert {
                     range: r2,
                     text: t2,
                 },
-            ) if r1.start == r2.start => Some(Change::Replace {
+            ) if r1.start == r2.start => Some(Replace {
                 range: r1.clone(),
                 old_text: t1,
                 new_text: t2.clone(),
                 marked: false,
             }),
             (
-                Change::Delete {
+                Delete {
                     range: r1,
                     text: t1,
                 },
-                Change::Delete {
+                Delete {
                     range: r2,
                     text: t2,
                 },
-            ) if r1.start == r2.end => Some(Change::Delete {
-                range: r2.start..r1.end,
-                text: SharedString::from(format!("{}{}", t2, t1)),
-            }),
+            ) => match (r1.start, r1.end, r2.start, r2.end) {
+                (start1, end1, start2, end2) if start1 == end2 => Some(Delete {
+                    range: start2..end1,
+                    text: SharedString::from(format!("{}{}", t2, t1)),
+                }),
+                (start1, end1, start2, end2) if start1 == start2 => Some(Delete {
+                    range: start1..end1.max(end2),
+                    text: SharedString::from(format!("{}{}", t1, t2)),
+                }),
+                _ => None,
+            },
             (
-                Change::Delete {
-                    range: r1,
-                    text: t1,
-                },
-                Change::Delete {
-                    range: r2,
-                    text: t2,
-                },
-            ) if r1.start == r2.start => Some(Change::Delete {
-                range: r1.start..(r1.end.max(r2.end)),
-                text: SharedString::from(format!("{}{}", t1, t2)),
-            }),
-            (
-                Change::Replace {
+                Replace {
                     range: r1,
                     new_text: t1,
                     old_text,
                     ..
                 },
-                Change::Insert { text: t2, .. },
-            ) => Some(Change::Replace {
+                Insert { text: t2, .. },
+            ) => Some(Replace {
                 range: r1,
                 new_text: SharedString::from(format!("{}{}", t1, t2)),
                 old_text,
                 marked: false,
             }),
             (
-                Change::Insert {
+                Insert {
                     text: t1,
                     range: r1,
                 },
-                Change::Replace {
+                Replace {
                     new_text,
                     old_text,
-                    marked,
+                    marked: true,
                     ..
                 },
-            ) if *marked && t1.ends_with(old_text.as_ref()) => Some(Change::Insert {
+            ) if t1.ends_with(old_text.as_ref()) => Some(Insert {
                 range: r1,
                 text: SharedString::from(format!(
                     "{}{}",
@@ -160,19 +156,19 @@ impl Change {
                 )),
             }),
             (
-                Change::Replace {
+                Replace {
                     range: r1,
                     new_text: nt1,
                     old_text: ot1,
                     ..
                 },
-                Change::Replace {
+                Replace {
                     new_text: nt2,
                     old_text: ot2,
-                    marked,
+                    marked: true,
                     ..
                 },
-            ) if *marked && nt1.ends_with(ot2.as_ref()) => Some(Change::Replace {
+            ) if nt1.ends_with(ot2.as_ref()) => Some(Replace {
                 range: r1,
                 old_text: ot1,
                 new_text: SharedString::from(format!("{}{}", &nt1[..nt1.len() - ot2.len()], nt2)),
