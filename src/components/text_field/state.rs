@@ -706,13 +706,6 @@ impl TextFieldState {
             return 0;
         };
 
-        if position.y < bounds.top() {
-            return 0;
-        }
-        if position.y > bounds.bottom() {
-            return self.value.len();
-        }
-
         let scroll_offset = self.scroll_handle.offset();
         let display_index = line.closest_index_for_x(position.x - bounds.left() + scroll_offset.x);
         self.display_to_actual_offset(display_index)
