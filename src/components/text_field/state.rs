@@ -83,42 +83,39 @@ impl TextFieldState {
     }
 
     /// Set the placeholder text
-    pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
+    pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>) {
         self.placeholder = placeholder.into();
-        self
     }
 
     /// Set the placeholder text color
-    pub fn placeholder_color(mut self, color: impl Into<Hsla>) -> Self {
+    pub fn set_placeholder_color(&mut self, color: impl Into<Hsla>) {
         self.placeholder_color = color.into();
-        self
     }
 
     /// Set the value of the input
-    pub fn value(mut self, value: impl Into<SharedString>) -> Self {
+    pub fn set_value(&mut self, value: impl Into<SharedString>) {
         self.value = value.into();
         self.history.clear();
-        self
     }
 
+    /// Whether the input is masked (e.g., for passwords)
     pub fn is_masked(&self) -> bool {
         self.masked
     }
 
     /// Set whether the input is masked (e.g., for passwords)
-    pub fn masked(&mut self, masked: bool) -> &Self {
+    pub fn set_masked(&mut self, masked: bool) {
         if self.masked != masked {
             self.masked = masked;
             self.should_auto_scroll = true;
         }
-        self
     }
 
     /// Set the mask string to use when masking is enabled
     ///
     /// Each character in the actual text will be replaced with the entire mask string
     /// when masking is enabled.
-    pub fn mask(mut self, mask: impl Into<SharedString>) -> Self {
+    pub fn set_mask(&mut self, mask: impl Into<SharedString>) {
         let mask = mask.into();
         if self.mask != mask {
             self.mask = mask;
@@ -126,7 +123,6 @@ impl TextFieldState {
                 self.should_auto_scroll = true;
             }
         }
-        self
     }
 
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {

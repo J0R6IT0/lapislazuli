@@ -32,10 +32,11 @@ impl Showcase {
         init(app);
 
         let text_state = app.new(|cx| {
-            TextFieldState::new(window, cx)
-                .placeholder("Try typing something here...")
-                .placeholder_color(rgb(0x9ca3af))
-                .mask("😎")
+            let mut state = TextFieldState::new(window, cx);
+            state.set_placeholder("Try typing something here...");
+            state.set_placeholder_color(rgb(0x9ca3af));
+            state.set_mask("😎");
+            state
         });
 
         app.new(|cx| Self {
@@ -94,7 +95,7 @@ impl Showcase {
 
     fn toggle_masked<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
         self.text_state.update(cx, |state, _| {
-            state.masked(!state.is_masked());
+            state.set_masked(!state.is_masked());
         });
         cx.notify();
     }
