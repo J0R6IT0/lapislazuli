@@ -18,6 +18,10 @@ pub trait Disableable: Sized {
     }
 }
 
+pub trait Validatable: Sized {
+    fn check_validity(&self) -> bool;
+}
+
 pub trait Selectable: Sized {
     fn element_id(&self) -> &ElementId;
 

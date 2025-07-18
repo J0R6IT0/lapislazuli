@@ -1,11 +1,14 @@
-use crate::components::text_field::{
-    actions::*,
-    cursor::Cursor,
-    element::{CURSOR_WIDTH, TextElement},
-    events::{ChangeEvent, InputEvent},
-    history::{Change, History},
-    text_ops::TextOps,
-    *,
+use crate::{
+    Validatable,
+    components::text_field::{
+        actions::*,
+        cursor::Cursor,
+        element::{CURSOR_WIDTH, TextElement},
+        events::{ChangeEvent, InputEvent},
+        history::{Change, History},
+        text_ops::TextOps,
+        *,
+    },
 };
 use gpui::*;
 use std::ops::Range;
@@ -33,6 +36,7 @@ pub struct TextFieldState {
     pub(super) masked: bool,
     pub(super) mask: SharedString,
     max_length: Option<usize>,
+    validator: Option<Box<dyn Fn(SharedString) -> bool>>,
     history: History,
     ignore_history: bool,
     _subscriptions: Vec<Subscription>,
@@ -81,6 +85,7 @@ impl TextFieldState {
             masked: false,
             mask: SharedString::new("•"),
             max_length: None,
+            validator: None,
             history: History::new(),
             ignore_history: false,
             cursor,
@@ -135,6 +140,13 @@ impl TextFieldState {
     /// Set the maximum length of the text field (graphemes)
     pub fn set_max_length(&mut self, max_length: Option<usize>) {
         self.max_length = max_length;
+    }
+
+    pub fn set_validator<F>(&mut self, validator: F)
+    where
+        F: Fn(SharedString) -> bool + 'static,
+    {
+        self.validator = Some(Box::new(validator));
     }
 
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
@@ -981,6 +993,22 @@ impl EntityInputHandler for TextFieldState {
 impl Focusable for TextFieldState {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus_handle.clone()
+    }
+}
+
+impl Validatable for TextFieldState {
+    fn check_validity(&self) -> bool {
+        if let Some(max_length) = self.max_length
+            && self.value.grapheme_indices(true).count() > max_length
+        {
+            return false;
+        }
+
+        if let Some(validator) = &self.validator {
+            return validator(self.value.clone());
+        }
+
+        true
     }
 }
 
