@@ -2,7 +2,7 @@
  * https://github.com/longbridge/gpui-component/blob/main/crates/ui/src/input/blink_cursor.rs
  */
 
-use gpui::*;
+use gpui::{Context, Timer};
 use std::time::Duration;
 
 static INTERVAL: Duration = Duration::from_millis(500);

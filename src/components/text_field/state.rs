@@ -38,6 +38,7 @@ pub struct TextFieldState {
     pub(super) cursor: Entity<Cursor>,
     pub(super) masked: bool,
     pub(super) mask: SharedString,
+    max_length: Option<usize>,
     history: History,
     ignore_history: bool,
     _subscriptions: Vec<Subscription>,
@@ -85,6 +86,7 @@ impl TextFieldState {
             should_auto_scroll: false,
             masked: false,
             mask: SharedString::new("•"),
+            max_length: None,
             history: History::new(),
             ignore_history: false,
             cursor,
@@ -134,6 +136,11 @@ impl TextFieldState {
                 self.should_auto_scroll = true;
             }
         }
+    }
+
+    /// Set the maximum length of the text field (graphemes)
+    pub fn set_max_length(&mut self, max_length: Option<usize>) {
+        self.max_length = max_length;
     }
 
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
@@ -787,6 +794,56 @@ impl TextFieldState {
             )
         }
     }
+
+    fn prepare_replace_text(
+        &mut self,
+        range_utf16: Option<Range<usize>>,
+        new_text: &str,
+        cx: &mut Context<Self>,
+    ) -> Option<(String, Range<usize>)> {
+        let range = range_utf16
+            .as_ref()
+            .map(|range_utf16| TextOps::range_from_utf16(&self.value, range_utf16))
+            .or(self.marked_range.clone())
+            .unwrap_or(self.selected_range.clone());
+
+        let new_text = if let Some(max_length) = self.max_length
+            && !new_text.is_empty()
+        {
+            let total_len = self.value.grapheme_indices(true).count();
+            let range_len = self.value[range.clone()].grapheme_indices(true).count();
+            let new_len = new_text.grapheme_indices(true).count();
+
+            let current_len = total_len - range_len;
+
+            if current_len + new_len > max_length {
+                let available_space = max_length.saturating_sub(current_len);
+                if available_space == 0 {
+                    return None;
+                }
+
+                let byte_offset =
+                    TextOps::grapheme_offset_to_byte_offset(new_text, available_space);
+                &new_text[..byte_offset]
+            } else {
+                new_text
+            }
+        } else {
+            new_text
+        };
+
+        self.pause_cursor_blink(cx);
+        self.push_history(new_text, &range);
+
+        let new_value = format!(
+            "{}{}{}",
+            &self.value[0..range.start],
+            new_text,
+            &self.value[range.end..]
+        );
+
+        Some((new_value, range))
+    }
 }
 
 impl EntityInputHandler for TextFieldState {
@@ -831,21 +888,10 @@ impl EntityInputHandler for TextFieldState {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.pause_cursor_blink(cx);
-        let range = range_utf16
-            .as_ref()
-            .map(|range_utf16| TextOps::range_from_utf16(&self.value, range_utf16))
-            .or(self.marked_range.clone())
-            .unwrap_or(self.selected_range.clone());
-
-        self.push_history(new_text, &range);
-
-        let new_value = format!(
-            "{}{}{}",
-            &self.value[0..range.start],
-            new_text,
-            &self.value[range.end..]
-        );
+        let (new_value, range) = match self.prepare_replace_text(range_utf16, new_text, cx) {
+            Some(result) => result,
+            None => return,
+        };
 
         self.value = new_value.into();
         let new_cursor_pos = range.start + new_text.len();
@@ -869,20 +915,10 @@ impl EntityInputHandler for TextFieldState {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let range = range_utf16
-            .as_ref()
-            .map(|range_utf16| TextOps::range_from_utf16(&self.value, range_utf16))
-            .or(self.marked_range.clone())
-            .unwrap_or(self.selected_range.clone());
-
-        self.push_history(new_text, &range);
-
-        let new_value = format!(
-            "{}{}{}",
-            &self.value[0..range.start],
-            new_text,
-            &self.value[range.end..]
-        );
+        let (new_value, range) = match self.prepare_replace_text(range_utf16, new_text, cx) {
+            Some(result) => result,
+            None => return,
+        };
 
         self.value = new_value.into();
 

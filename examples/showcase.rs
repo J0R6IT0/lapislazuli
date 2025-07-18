@@ -40,6 +40,7 @@ impl Showcase {
             state.set_placeholder("Try typing something here...");
             state.set_placeholder_color(rgb(0x9ca3af));
             state.set_mask("😎");
+            state.set_max_length(Some(10));
             state
         });
 
