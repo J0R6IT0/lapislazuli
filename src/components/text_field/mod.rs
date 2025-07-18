@@ -15,8 +15,8 @@ mod text_ops;
 
 pub use state::*;
 
-/// Context identifier for input key bindings
-const CONTEXT: &str = "input";
+/// Context identifier for text field key bindings
+const CONTEXT: &str = "text-field";
 
 pub fn text_field(state: Entity<TextFieldState>) -> TextField {
     TextField {
@@ -26,9 +26,9 @@ pub fn text_field(state: Entity<TextFieldState>) -> TextField {
     }
 }
 
-/// Initialize input key bindings and actions
-pub fn init(cx: &mut App) {
-    cx.bind_keys([
+/// Initialize text field key bindings and actions
+pub fn init(app: &mut App) {
+    app.bind_keys([
         KeyBinding::new("left", Left, Some(CONTEXT)),
         KeyBinding::new("right", Right, Some(CONTEXT)),
         KeyBinding::new("home", Home, Some(CONTEXT)),
