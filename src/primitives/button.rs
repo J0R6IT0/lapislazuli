@@ -66,6 +66,8 @@ impl InteractiveElement for Button {
     }
 }
 
+impl StatefulInteractiveElement for Button {}
+
 impl RenderOnce for Button {
     fn render(self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
         self.base
