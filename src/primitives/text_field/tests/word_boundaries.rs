@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod word_boundaries {
-    use crate::components::text_field::text_ops::TextOps;
+    use crate::primitives::text_field::text_ops::TextOps;
 
     fn test_boundaries(text: &str, cursor: usize, expected_prev: usize, expected_next: usize) {
         let prev = TextOps::previous_word_boundary(text, cursor);

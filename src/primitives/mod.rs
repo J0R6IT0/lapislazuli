@@ -3,7 +3,10 @@ use gpui::{
     Styled, div,
 };
 
+mod button;
 pub mod text_field;
+
+pub use button::*;
 
 /// Shorthand for creating a vertical flex `Div` element.
 pub fn v_flex() -> Div {

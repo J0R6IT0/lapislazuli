@@ -6,12 +6,12 @@ use gpui::{
 use lapislazuli::{
     Disableable, ParentElementWithContext,
     components::{
-        Button, Checkbox, Separator, Switch,
+        Checkbox, Separator, Switch,
         progress::{Progress, ProgressFill, ProgressTrack},
         tabs::{Tabs, TabsTrigger},
     },
     primitives::{
-        a, h_flex, span,
+        a, h_flex, span, button,
         text_field::{ChangeEvent, InputEvent, TextFieldState, init, text_field},
         v_flex,
     },
@@ -327,7 +327,7 @@ impl Render for Showcase {
                                     .gap(rems(1.0))
                                     .flex_wrap()
                                     .child(
-                                        Button::new("increment")
+                                        button("increment")
                                             .bg(rgb(0x3b82f6))
                                             .hover(|this| this.bg(rgb(0x2563eb)))
                                             .disabled(self.disabled)
@@ -339,7 +339,7 @@ impl Render for Showcase {
                                             .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
                                     )
                                     .child(
-                                        Button::new("decrement")
+                                        button("decrement")
                                             .bg(rgb(0xf59e0b))
                                             .hover(|this| this.bg(rgb(0xd97706)))
                                             .disabled(self.disabled)
@@ -351,7 +351,7 @@ impl Render for Showcase {
                                             .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
                                     )
                                     .child(
-                                        Button::new("reset")
+                                        button("reset")
                                             .bg(rgb(0xef4444))
                                             .hover(|this| this.bg(rgb(0xdc2626)))
                                             .disabled(self.disabled)
@@ -363,7 +363,7 @@ impl Render for Showcase {
                                             .when_disabled(|this| this.bg(rgb(0x9ca3af)).cursor_not_allowed())
                                     )
                                     .child(
-                                        Button::new("complete")
+                                        button("complete")
                                             .bg(rgb(0x10b981))
                                             .hover(|this| this.bg(rgb(0x059669)))
                                             .disabled(self.disabled)
@@ -436,7 +436,7 @@ impl Render for Showcase {
                                 h_flex()
                                     .gap(rems(1.0))
                                     .child(
-                                        Button::new("toggle_disabled")
+                                        button("toggle_disabled")
                                             .bg(rgb(0x6366f1))
                                             .hover(|this| this.bg(rgb(0x5b21b6)))
                                             .px(rems(1.5))
@@ -450,7 +450,7 @@ impl Render for Showcase {
                                             .on_click(cx.listener(Self::toggle_disabled))
                                     )
                                     .child(
-                                        Button::new("reset_counter")
+                                        button("reset_counter")
                                             .bg(rgb(0x64748b))
                                             .hover(|this| this.bg(rgb(0x475569)))
                                             .px(rems(1.5))

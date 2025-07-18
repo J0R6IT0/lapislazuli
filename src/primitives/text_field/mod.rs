@@ -1,7 +1,7 @@
 use crate::{Disableable, primitives::h_flex_center};
 use gpui::{
-    AnyElement, App, CursorStyle, Div, Entity, Focusable, InteractiveElement, Interactivity,
-    IntoElement, MouseButton, ParentElement, RenderOnce, StyleRefinement, Styled, Window,
+    App, CursorStyle, Div, Entity, Focusable, InteractiveElement, Interactivity, IntoElement,
+    MouseButton, ParentElement, RenderOnce, StyleRefinement, Styled, Window,
     prelude::FluentBuilder,
 };
 
