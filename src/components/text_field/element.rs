@@ -41,7 +41,11 @@ impl IntoElement for TextElement {
 }
 
 impl TextElement {
-    fn prepare_display_text(&self, state: &TextFieldState, text_color: Hsla) -> (SharedString, Hsla) {
+    fn prepare_display_text(
+        &self,
+        state: &TextFieldState,
+        text_color: Hsla,
+    ) -> (SharedString, Hsla) {
         if state.value.is_empty() {
             return (state.placeholder.clone(), state.placeholder_color);
         }
@@ -177,7 +181,7 @@ impl Element for TextElement {
         let font_size = style.font_size.to_pixels(window.rem_size());
         let line = window
             .text_system()
-            .shape_line(display_text, font_size, &runs);
+            .shape_line(display_text, font_size, &runs, None);
 
         if state.should_auto_scroll {
             self.state.update(app, |state, _| {
