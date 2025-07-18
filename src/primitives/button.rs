@@ -1,5 +1,9 @@
 use crate::Disableable;
-use gpui::{prelude::FluentBuilder, *};
+use gpui::{
+    AnyElement, App, ClickEvent, Div, ElementId, InteractiveElement, Interactivity, IntoElement,
+    MouseButton, ParentElement, RenderOnce, Stateful, StatefulInteractiveElement, StyleRefinement,
+    Styled, Window, div, prelude::FluentBuilder,
+};
 use smallvec::SmallVec;
 
 pub fn button(id: impl Into<ElementId>) -> Button {
