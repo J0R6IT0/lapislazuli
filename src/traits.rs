@@ -1,4 +1,30 @@
-use gpui::*;
+use gpui::{ElementId, IntoElement, ParentElement};
+
+/// An element that can be disabled to prevent user interaction.
+pub trait Disableable: Sized {
+    /// Returns whether the element is currently disabled.
+    fn is_disabled(&self) -> bool;
+
+    /// Sets the disabled state of the element.
+    fn disabled(self, disabled: bool) -> Self;
+
+    /// Conditionally modify the element if it is disabled.
+    fn when_disabled(self, handler: impl FnOnce(Self) -> Self) -> Self {
+        if self.is_disabled() {
+            handler(self)
+        } else {
+            self
+        }
+    }
+}
+
+pub trait Selectable: Sized {
+    fn element_id(&self) -> &ElementId;
+
+    fn selected(self, selected: bool) -> Self;
+
+    fn is_selected(&self) -> bool;
+}
 
 /// A trait for parent elements that can provide context to their children.
 ///

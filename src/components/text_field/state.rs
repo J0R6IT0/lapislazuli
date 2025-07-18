@@ -1,6 +1,8 @@
 use crate::components::text_field::{
+    actions::*,
     cursor::Cursor,
     element::{CURSOR_WIDTH, TextElement},
+    events::{ChangeEvent, InputEvent},
     history::{Change, History},
     text_ops::TextOps,
     *,
@@ -8,14 +10,6 @@ use crate::components::text_field::{
 use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
-
-pub struct InputEvent {
-    pub value: SharedString,
-}
-
-pub struct ChangeEvent {
-    pub value: SharedString,
-}
 
 /// State management for text field components
 ///
