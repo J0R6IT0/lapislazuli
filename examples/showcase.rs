@@ -570,6 +570,7 @@ impl Render for Showcase {
                             )
                             .child(
                                 text_field(self.text_state.clone())
+                                    .disabled(self.disabled)
                                     .border_color(rgb(0xd1d5db))
                                     .focus(|this| this.border_color(rgb(0x3b82f6)))
                                     .text_color(rgb(0x374151))

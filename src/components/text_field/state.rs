@@ -594,7 +594,11 @@ impl TextFieldState {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !event.modifiers.shift {
+            return;
+        }
         cx.stop_propagation();
+
         let delta = event.delta.pixel_delta(window.line_height());
         let current_offset = self.scroll_handle.offset();
         let new_offset = current_offset - delta;
