@@ -1,6 +1,5 @@
 mod button;
 mod checkbox;
-pub mod text_field;
 pub mod progress;
 mod separator;
 mod switch;

@@ -1,4 +1,4 @@
-use crate::components::text_field::state::TextFieldState;
+use super::state::TextFieldState;
 use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;

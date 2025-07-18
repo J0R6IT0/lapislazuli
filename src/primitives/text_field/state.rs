@@ -1,6 +1,6 @@
 use crate::{
     Validatable,
-    components::text_field::{
+    primitives::text_field::{
         actions::*,
         cursor::Cursor,
         element::{CURSOR_WIDTH, TextElement},
@@ -142,6 +142,7 @@ impl TextFieldState {
         self.max_length = max_length;
     }
 
+    /// Set a custom validation function for the text field
     pub fn set_validator<F>(&mut self, validator: F)
     where
         F: Fn(SharedString) -> bool + 'static,

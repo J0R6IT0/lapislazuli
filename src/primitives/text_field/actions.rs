@@ -1,6 +1,5 @@
+use super::CONTEXT;
 use gpui::{App, KeyBinding, actions};
-
-use crate::components::text_field::CONTEXT;
 
 /// Initialize text field key bindings and actions
 pub fn init(app: &mut App) {

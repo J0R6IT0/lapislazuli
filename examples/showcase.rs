@@ -9,9 +9,12 @@ use lapislazuli::{
         Button, Checkbox, Separator, Switch,
         progress::{Progress, ProgressFill, ProgressTrack},
         tabs::{Tabs, TabsTrigger},
-        text_field::{ChangeEvent, InputEvent, TextFieldState, init, text_field},
     },
-    primitives::{a, h_flex, h_flex_center, span, v_flex},
+    primitives::{
+        a, h_flex, span,
+        text_field::{ChangeEvent, InputEvent, TextFieldState, init, text_field},
+        v_flex,
+    },
 };
 use std::time::Duration;
 
@@ -111,13 +114,6 @@ impl Showcase {
 
     fn reset_counter<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
         self.button_click_count = 0;
-        cx.notify();
-    }
-
-    fn toggle_masked<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
-        self.text_state.update(cx, |state, _| {
-            state.set_masked(!state.is_masked());
-        });
         cx.notify();
     }
 }
@@ -583,19 +579,7 @@ impl Render for Showcase {
                                     .max_w(rems(20.))
                                     .rounded_lg()
                                     .gap(px(12.))
-                                    .leading(
-                                        Button::new("search_leading")
-                                            .on_click(cx.listener(Self::toggle_masked))
-                                            .child(
-                                                h_flex_center()
-                                                    .h(px(40.))
-                                                    .w(px(40.))
-                                                    .bg(rgb(0x3b82f6))
-                                                    .hover(|this| this.bg(rgb(0x2563eb)))
-                                                    .rounded_md()
-                                                    .child(span("👀").text_size(rems(1.2)))
-                                            )
-                                    )
+                                    
                             )
                     )
             )

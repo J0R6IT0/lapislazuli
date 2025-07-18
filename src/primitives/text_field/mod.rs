@@ -26,7 +26,6 @@ pub fn text_field(state: Entity<TextFieldState>) -> TextField {
     TextField {
         base: h_flex_center().cursor(CursorStyle::IBeam),
         state,
-        leading: None,
         disabled: false,
     }
 }
@@ -35,15 +34,7 @@ pub fn text_field(state: Entity<TextFieldState>) -> TextField {
 pub struct TextField {
     base: Div,
     state: Entity<TextFieldState>,
-    leading: Option<AnyElement>,
     disabled: bool,
-}
-
-impl TextField {
-    pub fn leading(mut self, element: impl IntoElement) -> Self {
-        self.leading = Some(element.into_any_element());
-        self
-    }
 }
 
 impl Styled for TextField {
@@ -120,7 +111,6 @@ impl RenderOnce for TextField {
                     .on_mouse_move(window.listener_for(&self.state, TextFieldState::on_mouse_move))
             })
             .on_scroll_wheel(window.listener_for(&self.state, TextFieldState::on_scroll_wheel))
-            .when_some(self.leading, |this, leading| this.child(leading))
             .child(self.state.clone())
     }
 }
