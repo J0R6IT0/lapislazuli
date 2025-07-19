@@ -11,7 +11,7 @@ use lapislazuli::{
         tabs::{Tabs, TabsTrigger},
     },
     primitives::{
-        a, h_flex, span, button,
+        a, button, h_flex, span,
         text_field::{ChangeEvent, InputEvent, TextFieldState, init, text_field},
         v_flex,
     },
@@ -328,9 +328,11 @@ impl Render for Showcase {
                                     .flex_wrap()
                                     .child(
                                         button("increment")
+                                            .border_2()
+                                            .focus(|this| this.border_color(rgb(0x000000)))
                                             .bg(rgb(0x3b82f6))
                                             .hover(|this| this.bg(rgb(0x2563eb)))
-                                            .disabled(self.disabled)
+                                            .disabled(self.disabled || self.progress_value != 65.0)
                                             .px(rems(1.5))
                                             .py(rems(0.75))
                                             .rounded_md()
@@ -579,7 +581,6 @@ impl Render for Showcase {
                                     .max_w(rems(20.))
                                     .rounded_lg()
                                     .gap(px(12.))
-                                    
                             )
                     )
             )

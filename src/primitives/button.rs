@@ -73,19 +73,25 @@ impl InteractiveElement for Button {
 impl StatefulInteractiveElement for Button {}
 
 impl RenderOnce for Button {
-    fn render(self, _window: &mut Window, _app: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, app: &mut App) -> impl IntoElement {
+        let focus_handle = window.use_state(app, |_window, app| app.focus_handle());
+
         self.base
             .when_some(
                 self.on_click.filter(|_| !self.disabled),
                 |this, on_click| {
                     let stop_propagation = self.stop_propagation;
-                    this.on_mouse_down(MouseButton::Left, move |_, window, app| {
-                        window.prevent_default();
-                        if stop_propagation {
-                            app.stop_propagation();
-                        }
-                    })
-                    .on_click(on_click)
+                    this.track_focus(focus_handle.read(app))
+                        .on_mouse_down(MouseButton::Left, move |_, window, app| {
+                            window.prevent_default();
+                            focus_handle.update(app, |focus_handle, _| {
+                                focus_handle.focus(window);
+                            });
+                            if stop_propagation {
+                                app.stop_propagation();
+                            }
+                        })
+                        .on_click(on_click)
                 },
             )
             .children(self.children)
