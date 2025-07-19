@@ -60,7 +60,7 @@ pub fn init(app: &mut App) {
 }
 
 actions!(
-    input,
+    lp_text_field,
     [
         Backspace,
         Delete,

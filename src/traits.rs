@@ -22,6 +22,10 @@ pub trait Validatable: Sized {
     fn check_validity(&self) -> bool;
 }
 
+pub trait AutoFocusable: Sized {
+    fn auto_focus(self, autofocus: bool) -> Self;
+}
+
 pub trait Selectable: Sized {
     fn element_id(&self) -> &ElementId;
 

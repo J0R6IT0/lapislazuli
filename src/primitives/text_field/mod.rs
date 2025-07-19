@@ -20,7 +20,7 @@ pub use events::*;
 pub use state::*;
 
 /// Context identifier for text field key bindings
-const CONTEXT: &str = "text-field";
+const CONTEXT: &str = "lp-text-field";
 
 pub fn text_field(state: Entity<TextFieldState>) -> TextField {
     TextField {

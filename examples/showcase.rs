@@ -4,7 +4,7 @@ use gpui::{
     Styled, Window, WindowOptions, px, relative, rems, rgb, rgba,
 };
 use lapislazuli::{
-    Disableable, ParentElementWithContext,
+    AutoFocusable, Disableable, ParentElementWithContext,
     components::{
         Checkbox, Separator, Switch,
         progress::{Progress, ProgressFill, ProgressTrack},
@@ -332,7 +332,7 @@ impl Render for Showcase {
                                             .focus(|this| this.border_color(rgb(0x000000)))
                                             .bg(rgb(0x3b82f6))
                                             .hover(|this| this.bg(rgb(0x2563eb)))
-                                            .disabled(self.disabled || self.progress_value != 65.0)
+                                            .disabled(self.disabled)
                                             .px(rems(1.5))
                                             .py(rems(0.75))
                                             .rounded_md()
@@ -342,6 +342,8 @@ impl Render for Showcase {
                                     )
                                     .child(
                                         button("decrement")
+                                            .border_2()
+                                            .focus(|this| this.border_color(rgb(0x000000)))
                                             .bg(rgb(0xf59e0b))
                                             .hover(|this| this.bg(rgb(0xd97706)))
                                             .disabled(self.disabled)
@@ -354,6 +356,8 @@ impl Render for Showcase {
                                     )
                                     .child(
                                         button("reset")
+                                            .border_2()
+                                            .focus(|this| this.border_color(rgb(0x000000)))
                                             .bg(rgb(0xef4444))
                                             .hover(|this| this.bg(rgb(0xdc2626)))
                                             .disabled(self.disabled)
@@ -366,6 +370,8 @@ impl Render for Showcase {
                                     )
                                     .child(
                                         button("complete")
+                                            .border_2()
+                                            .focus(|this| this.border_color(rgb(0x000000)))
                                             .bg(rgb(0x10b981))
                                             .hover(|this| this.bg(rgb(0x059669)))
                                             .disabled(self.disabled)
@@ -439,6 +445,9 @@ impl Render for Showcase {
                                     .gap(rems(1.0))
                                     .child(
                                         button("toggle_disabled")
+                                            .auto_focus(true)
+                                            .border_2()
+                                            .focus(|this| this.border_color(rgb(0x000000)))
                                             .bg(rgb(0x6366f1))
                                             .hover(|this| this.bg(rgb(0x5b21b6)))
                                             .px(rems(1.5))
@@ -453,6 +462,8 @@ impl Render for Showcase {
                                     )
                                     .child(
                                         button("reset_counter")
+                                            .border_2()
+                                            .focus(|this| this.border_color(rgb(0x000000)))
                                             .bg(rgb(0x64748b))
                                             .hover(|this| this.bg(rgb(0x475569)))
                                             .px(rems(1.5))
