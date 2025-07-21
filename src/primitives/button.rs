@@ -82,7 +82,7 @@ impl StatefulInteractiveElement for Button {}
 impl RenderOnce for Button {
     fn render(self, window: &mut Window, app: &mut App) -> impl IntoElement {
         let focus_handle = window.use_keyed_state(self.id, app, |window, app| {
-            let focus_handle = app.focus_handle();
+            let focus_handle = app.focus_handle().tab_stop(true);
             if self.auto_focus {
                 focus_handle.focus(window);
             }

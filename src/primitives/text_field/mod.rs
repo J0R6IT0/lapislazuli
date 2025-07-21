@@ -15,7 +15,7 @@ mod state;
 mod tests;
 mod text_ops;
 
-pub use actions::init;
+pub(crate) use actions::init;
 pub use events::*;
 pub use state::*;
 

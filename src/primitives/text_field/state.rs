@@ -50,7 +50,7 @@ impl TextFieldState {
     /// Create a new [`TextFieldState`] with default values
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let cursor = cx.new(|_| Cursor::new());
-        let focus_handle = cx.focus_handle();
+        let focus_handle = cx.focus_handle().tab_stop(true);
 
         let _subscriptions = vec![
             cx.observe(&cursor, |_, _, cx| cx.notify()),

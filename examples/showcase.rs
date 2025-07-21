@@ -4,7 +4,7 @@ use gpui::{
     Styled, Window, WindowOptions, px, relative, rems, rgb, rgba,
 };
 use lapislazuli::{
-    AutoFocusable, Disableable, ParentElementWithContext,
+    AutoFocusable, Disableable, LapislazuliProvider, ParentElementWithContext,
     components::{
         Checkbox, Separator, Switch,
         progress::{Progress, ProgressFill, ProgressTrack},
@@ -12,7 +12,7 @@ use lapislazuli::{
     },
     primitives::{
         a, button, h_flex, span,
-        text_field::{ChangeEvent, InputEvent, TextFieldState, init, text_field},
+        text_field::{ChangeEvent, InputEvent, TextFieldState, text_field},
         v_flex,
     },
 };
@@ -36,8 +36,6 @@ impl Focusable for Showcase {
 
 impl Showcase {
     fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
-        init(app);
-
         let text_state = app.new(|cx| {
             let mut state = TextFieldState::new(window, cx);
             state.set_placeholder("Try typing something here...");
@@ -666,7 +664,10 @@ impl Render for Showcase {
 
 fn main() {
     Application::new().run(|app| {
-        app.open_window(WindowOptions::default(), Showcase::new)
-            .unwrap();
+        app.open_window(WindowOptions::default(), |window, app| {
+            let showcase = Showcase::new(window, app);
+            LapislazuliProvider::new(showcase, window, app)
+        })
+        .unwrap();
     });
 }
