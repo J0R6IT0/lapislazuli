@@ -1,12 +1,12 @@
 use gpui::{
     Animation, AnimationExt, App, AppContext, Application, Context, Entity, FocusHandle, Focusable,
     FontWeight, InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement,
-    Styled, Window, WindowOptions, px, relative, rems, rgb, rgba,
+    Styled, Window, WindowOptions, div, px, relative, rems, rgb, rgba,
 };
 use lapislazuli::{
     AutoFocusable, Disableable, LapislazuliProvider, ParentElementWithContext,
     components::{
-        Checkbox, Separator, Switch,
+        Checkbox, Switch,
         progress::{Progress, ProgressFill, ProgressTrack},
         tabs::{Tabs, TabsTrigger},
     },
@@ -474,7 +474,7 @@ impl Render for Showcase {
                     )
             )
 
-            .child(Separator::new().bg(rgb(0xe2e8f0)).h(px(1.)).w_full())
+            .child(div().bg(rgb(0xe2e8f0)).h(px(1.)).w_full())
 
             .child(
                 v_flex()
@@ -552,7 +552,7 @@ impl Render for Showcase {
                     )
             )
 
-            .child(Separator::new().bg(rgb(0xe2e8f0)).h(px(1.)).w_full())
+            .child(div().bg(rgb(0xe2e8f0)).h(px(1.)).w_full())
 
             .child(
                 v_flex()
@@ -594,7 +594,7 @@ impl Render for Showcase {
                     )
             )
 
-            .child(Separator::new().bg(rgb(0xe2e8f0)).h(px(1.)).w_full())
+            .child(div().bg(rgb(0xe2e8f0)).h(px(1.)).w_full().w(px(20.)))
 
             .child(
                 v_flex()
