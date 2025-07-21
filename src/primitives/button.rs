@@ -98,7 +98,9 @@ impl RenderOnce for Button {
                         .on_mouse_down(MouseButton::Left, move |_, window, app| {
                             window.prevent_default();
                             focus_handle.update(app, |focus_handle, _| {
-                                focus_handle.focus(window);
+                                if !focus_handle.is_focused(window) {
+                                    focus_handle.focus(window);
+                                }
                             });
                         })
                         .on_click(move |event, window, app| (on_click)(event, window, app))
@@ -110,14 +112,14 @@ impl RenderOnce for Button {
                                             button: MouseButton::Left,
                                             position: Point::default(),
                                             modifiers: Modifiers::none(),
-                                            click_count: 1,
+                                            click_count: 0,
                                             first_mouse: false,
                                         },
                                         up: MouseUpEvent {
                                             button: MouseButton::Left,
                                             position: Point::default(),
                                             modifiers: event.keystroke.modifiers,
-                                            click_count: 1,
+                                            click_count: 0,
                                         },
                                     },
                                     window,

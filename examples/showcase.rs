@@ -594,7 +594,7 @@ impl Render for Showcase {
                     )
             )
 
-            .child(div().bg(rgb(0xe2e8f0)).h(px(1.)).w_full().w(px(20.)))
+            .child(div().bg(rgb(0xe2e8f0)).h(px(1.)).w_full())
 
             .child(
                 v_flex()
