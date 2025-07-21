@@ -10,7 +10,6 @@ In it's current state it is pretty much a proof of concept and should not be use
 - button
 - checkbox
 - progress
-- separator
 - switch
 - tabs
 - text input
@@ -19,4 +18,4 @@ In it's current state it is pretty much a proof of concept and should not be use
 
  - [gpui](https://github.com/zed-industries/zed/tree/main/crates/gpui) for the amazing framework.
  - [gpui-component](https://github.com/longbridge/gpui-component) as a reference for some functionality.
-- [kobalte](https://github.com/kobaltedev/kobalte) for the inspiration.
+ - [kobalte](https://github.com/kobaltedev/kobalte) for the inspiration.
