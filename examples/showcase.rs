@@ -1,7 +1,7 @@
 use gpui::{
     Animation, AnimationExt, App, AppContext, Application, Context, Entity, FocusHandle, Focusable,
-    FontWeight, InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement,
-    Styled, Window, WindowOptions, div, px, relative, rems, rgb, rgba,
+    FontWeight, InteractiveElement, IntoElement, ParentElement, Render, SharedString,
+    StatefulInteractiveElement, Styled, Window, WindowOptions, div, px, relative, rems, rgb, rgba,
 };
 use lapislazuli::{
     AutoFocusable, Disableable, LapislazuliProvider, ParentElementWithContext,
@@ -12,7 +12,7 @@ use lapislazuli::{
     },
     primitives::{
         a, button, h_flex, span,
-        text_field::{ChangeEvent, InputEvent, TextFieldState, text_field},
+        text_field::{InputEvent, text_field},
         v_flex,
     },
 };
@@ -21,11 +21,11 @@ use std::time::Duration;
 struct Showcase {
     progress_value: f32,
     previous_progress_value: f32,
-    text_state: Entity<TextFieldState>,
     focus_handle: FocusHandle,
     disabled: bool,
     button_click_count: u32,
     selected_tab_index: usize,
+    text_field_value: SharedString,
 }
 
 impl Focusable for Showcase {
@@ -35,41 +35,25 @@ impl Focusable for Showcase {
 }
 
 impl Showcase {
-    fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
-        let text_state = app.new(|cx| {
-            let mut state = TextFieldState::new(window, cx);
-            state.set_placeholder("Try typing something here...");
-            state.set_placeholder_color(rgb(0x9ca3af));
-            state.set_mask("😎");
-            state.set_max_length(Some(10));
-            state.set_validator(|v| v.contains("apple"));
-            state
-        });
-
-        app.new(|cx| {
-            cx.subscribe(&text_state, |_showcase, _state, event: &InputEvent, _cx| {
-                println!("On Input: {}", event.value);
-            })
-            .detach();
-
-            cx.subscribe(
-                &text_state,
-                |_showcase, _state, event: &ChangeEvent, _cx| {
-                    println!("On Change: {}", event.value);
-                },
-            )
-            .detach();
-
-            Self {
-                text_state,
-                focus_handle: cx.focus_handle(),
-                progress_value: 65.0,
-                previous_progress_value: 65.0,
-                disabled: false,
-                button_click_count: 0,
-                selected_tab_index: 0,
-            }
+    fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
+        app.new(|cx| Self {
+            focus_handle: cx.focus_handle(),
+            progress_value: 65.0,
+            previous_progress_value: 65.0,
+            disabled: false,
+            button_click_count: 0,
+            selected_tab_index: 0,
+            text_field_value: SharedString::new("Type something..."),
         })
+    }
+
+    fn set_text_field_value(
+        &mut self,
+        event: &InputEvent,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) {
+        self.text_field_value = event.value.clone();
     }
 
     fn increment_progress<T>(&mut self, _event: &T, _window: &mut Window, cx: &mut Context<Self>) {
@@ -577,7 +561,17 @@ impl Render for Showcase {
                                     .text_size(rems(0.95))
                             )
                             .child(
-                                text_field(self.text_state.clone())
+                                text_field("input")
+                                    .value(self.text_field_value.clone())
+                                    .on_input(cx.listener(Showcase::set_text_field_value))
+                                    .on_change(|event, _, _| {
+                                        println!("Text input changed: {}", event.value);
+                                    })
+                                    .placeholder("Search...")
+                                    .placeholder_color(rgb(0x9ca3af))
+                                    .mask("😎")
+                                    .max_length(10)
+                                    .validator(|v| v.contains("apple"))
                                     .disabled(self.disabled)
                                     .border_color(rgb(0xd1d5db))
                                     .focus(|this| this.border_color(rgb(0x3b82f6)))

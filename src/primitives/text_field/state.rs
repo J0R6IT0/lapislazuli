@@ -35,8 +35,10 @@ pub struct TextFieldState {
     pub(super) cursor: Entity<Cursor>,
     pub(super) masked: bool,
     pub(super) mask: SharedString,
-    max_length: Option<usize>,
-    validator: Option<Box<dyn Fn(SharedString) -> bool>>,
+    pub(super) on_input: Option<Box<dyn Fn(&InputEvent, &mut Window, &mut App) + 'static>>,
+    pub(super) on_change: Option<Box<dyn Fn(&ChangeEvent, &mut Window, &mut App) + 'static>>,
+    pub(super) max_length: Option<usize>,
+    pub(super) validator: Option<Box<dyn Fn(SharedString) -> bool>>,
     history: History,
     ignore_history: bool,
     _subscriptions: Vec<Subscription>,
@@ -84,6 +86,8 @@ impl TextFieldState {
             should_auto_scroll: false,
             masked: false,
             mask: SharedString::new("•"),
+            on_input: None,
+            on_change: None,
             max_length: None,
             validator: None,
             history: History::new(),
@@ -94,25 +98,31 @@ impl TextFieldState {
     }
 
     /// Set the placeholder text
-    pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>) {
-        self.placeholder = placeholder.into();
+    pub fn set_placeholder(&mut self, placeholder: Option<impl Into<SharedString>>) {
+        if let Some(placeholder) = placeholder {
+            self.placeholder = placeholder.into();
+        } else {
+            self.placeholder = SharedString::new("");
+        }
     }
 
     /// Set the placeholder text color
-    pub fn set_placeholder_color(&mut self, color: impl Into<Hsla>) {
-        self.placeholder_color = color.into();
+    pub fn set_placeholder_color(&mut self, color: Option<impl Into<Hsla>>) {
+        if let Some(color) = color {
+            self.placeholder_color = color.into();
+        } else {
+            self.placeholder_color = hsla(0., 0., 0.5, 0.5);
+        }
     }
 
     /// Set the value of the text field
     pub fn set_value(&mut self, value: impl Into<SharedString>) {
-        self.value = value.into();
-        self.emitted_value = self.value.clone();
-        self.history.clear();
-    }
-
-    /// Whether the text field is masked (e.g., for passwords)
-    pub fn is_masked(&self) -> bool {
-        self.masked
+        let value = value.into();
+        if value != self.value {
+            self.value = value;
+            self.emitted_value = self.value.clone();
+            self.history.clear();
+        }
     }
 
     /// Mask or unmask the text field (e.g., for passwords)
@@ -127,27 +137,18 @@ impl TextFieldState {
     ///
     /// Each character in the actual text will be replaced with the entire mask string
     /// when masking is enabled.
-    pub fn set_mask(&mut self, mask: impl Into<SharedString>) {
-        let mask = mask.into();
-        if self.mask != mask {
-            self.mask = mask;
-            if self.masked {
-                self.should_auto_scroll = true;
+    pub fn set_mask(&mut self, mask: Option<impl Into<SharedString>>) {
+        if let Some(mask) = mask {
+            let mask = mask.into();
+            if self.mask != mask {
+                self.mask = mask;
+                if self.masked {
+                    self.should_auto_scroll = true;
+                }
             }
+        } else {
+            self.mask = SharedString::new("•");
         }
-    }
-
-    /// Set the maximum length of the text field (graphemes)
-    pub fn set_max_length(&mut self, max_length: Option<usize>) {
-        self.max_length = max_length;
-    }
-
-    /// Set a custom validation function for the text field
-    pub fn set_validator<F>(&mut self, validator: F)
-    where
-        F: Fn(SharedString) -> bool + 'static,
-    {
-        self.validator = Some(Box::new(validator));
     }
 
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
@@ -156,23 +157,30 @@ impl TextFieldState {
         });
     }
 
-    fn on_blur(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+    fn on_blur(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.history.prevent_merge();
         self.cursor.update(cx, |cursor, cx| {
             cursor.stop(cx);
         });
-        self.on_change(cx);
+        self.on_change(window, cx);
     }
 
-    fn on_change(&mut self, cx: &mut Context<Self>) {
+    fn on_change(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.value == self.emitted_value {
             return;
         }
 
         self.emitted_value = self.value.clone();
-        cx.emit(ChangeEvent {
-            value: self.value.clone(),
-        });
+
+        if let Some(callback) = &self.on_change {
+            callback(
+                &ChangeEvent {
+                    value: self.value.clone(),
+                },
+                window,
+                cx,
+            );
+        }
     }
 
     fn pause_cursor_blink(&mut self, cx: &mut Context<Self>) {
@@ -455,19 +463,6 @@ impl TextFieldState {
         }
     }
 
-    /// Clear all text and reset state
-    pub fn clear(&mut self) {
-        self.value = "".into();
-        self.selected_range = 0..0;
-        self.selection_reversed = false;
-        self.marked_range = None;
-        self.last_layout = None;
-        self.last_bounds = None;
-        self.selecting = false;
-        self.should_auto_scroll = true;
-        self.scroll_handle.set_offset(point(px(0.0), px(0.0)));
-    }
-
     /// Delete word to the left of cursor
     pub(super) fn delete_word_left(
         &mut self,
@@ -527,8 +522,8 @@ impl TextFieldState {
         self.replace_text_in_range(None, "", window, cx);
     }
 
-    pub(super) fn enter(&mut self, _: &Enter, _: &mut Window, cx: &mut Context<Self>) {
-        self.on_change(cx);
+    pub(super) fn enter(&mut self, _: &Enter, window: &mut Window, cx: &mut Context<Self>) {
+        self.on_change(window, cx);
     }
 
     // ============================================================================
@@ -811,12 +806,15 @@ impl TextFieldState {
         range_utf16: Option<Range<usize>>,
         new_text: &str,
         cx: &mut Context<Self>,
-    ) -> Option<(String, Range<usize>)> {
+    ) -> Option<(String, String, Range<usize>)> {
+        println!("Preparing to replace text: '{}'", new_text);
+        println!("utf16 range: {:?}", range_utf16);
         let range = range_utf16
             .as_ref()
             .map(|range_utf16| TextOps::range_from_utf16(&self.value, range_utf16))
             .or(self.marked_range.clone())
             .unwrap_or(self.selected_range.clone());
+        println!("range: {:?}", range);
 
         let new_text = if let Some(max_length) = self.max_length
             && !new_text.is_empty()
@@ -853,7 +851,7 @@ impl TextFieldState {
             &self.value[range.end..]
         );
 
-        Some((new_value, range))
+        Some((new_text.into(), new_value, range))
     }
 }
 
@@ -896,25 +894,32 @@ impl EntityInputHandler for TextFieldState {
         &mut self,
         range_utf16: Option<Range<usize>>,
         new_text: &str,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (new_value, range) = match self.prepare_replace_text(range_utf16, new_text, cx) {
-            Some(result) => result,
-            None => return,
-        };
+        let (new_text, new_value, range) =
+            match self.prepare_replace_text(range_utf16, new_text, cx) {
+                Some(result) => result,
+                None => return,
+            };
 
-        self.value = new_value.into();
         let new_cursor_pos = range.start + new_text.len();
+        self.value = new_value.into();
         self.selected_range = new_cursor_pos..new_cursor_pos;
         self.marked_range = None;
         self.should_auto_scroll = true;
         self.last_layout = None;
         self.last_bounds = None;
 
-        cx.emit(InputEvent {
-            value: self.value.clone(),
-        });
+        if let Some(on_input) = &self.on_input {
+            on_input(
+                &InputEvent {
+                    value: self.value.clone(),
+                },
+                window,
+                cx,
+            );
+        }
         self.update_scroll_offset(None, cx);
     }
 
@@ -923,13 +928,14 @@ impl EntityInputHandler for TextFieldState {
         range_utf16: Option<Range<usize>>,
         new_text: &str,
         new_selected_range_utf16: Option<Range<usize>>,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (new_value, range) = match self.prepare_replace_text(range_utf16, new_text, cx) {
-            Some(result) => result,
-            None => return,
-        };
+        let (new_text, new_value, range) =
+            match self.prepare_replace_text(range_utf16, new_text, cx) {
+                Some(result) => result,
+                None => return,
+            };
 
         self.value = new_value.into();
 
@@ -949,9 +955,15 @@ impl EntityInputHandler for TextFieldState {
             });
 
         self.should_auto_scroll = true;
-        cx.emit(InputEvent {
-            value: self.value.clone(),
-        });
+        if let Some(on_input) = &self.on_input {
+            on_input(
+                &InputEvent {
+                    value: self.value.clone(),
+                },
+                window,
+                cx,
+            );
+        }
         cx.notify();
     }
 
