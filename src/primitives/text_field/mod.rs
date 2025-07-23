@@ -4,8 +4,8 @@ use crate::{
 };
 use gpui::{
     App, AppContext, CursorStyle, Div, ElementId, Entity, Focusable, Hsla, InteractiveElement,
-    Interactivity, IntoElement, MouseButton, ParentElement, RenderOnce, SharedString,
-    StyleRefinement, Styled, Window, prelude::FluentBuilder,
+    Interactivity, IntoElement, MouseButton, ParentElement, RenderOnce, SharedString, Stateful,
+    StatefulInteractiveElement, StyleRefinement, Styled, Window, prelude::FluentBuilder,
 };
 
 mod actions;
@@ -28,7 +28,7 @@ pub fn text_field(id: impl Into<ElementId>) -> TextField {
     let id = id.into();
     TextField {
         id: id.clone(),
-        base: h_flex_center().cursor(CursorStyle::IBeam),
+        base: h_flex_center().id(id).cursor(CursorStyle::IBeam),
         disabled: false,
         value: SharedString::new(""),
         on_input: None,
@@ -45,7 +45,7 @@ pub fn text_field(id: impl Into<ElementId>) -> TextField {
 #[derive(IntoElement)]
 pub struct TextField {
     id: ElementId,
-    base: Div,
+    base: Stateful<Div>,
     disabled: bool,
     value: SharedString,
     on_input: Option<Box<dyn Fn(&InputEvent, &mut Window, &mut App) + 'static>>,
@@ -122,6 +122,8 @@ impl InteractiveElement for TextField {
         self.base.interactivity()
     }
 }
+
+impl StatefulInteractiveElement for TextField {}
 
 impl Disableable for TextField {
     fn is_disabled(&self) -> bool {

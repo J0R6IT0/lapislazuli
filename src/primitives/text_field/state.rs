@@ -247,12 +247,12 @@ impl TextFieldState {
     pub(super) fn move_to(&mut self, offset: usize, cx: &mut Context<Self>) {
         self.pause_cursor_blink(cx);
         let offset = offset.clamp(0, self.value.len());
-        if offset == self.cursor_offset() {
-            return;
+        if offset != self.cursor_offset() {
+            self.should_auto_scroll = true;
+            self.history.prevent_merge();
         }
+
         self.selected_range = offset..offset;
-        self.should_auto_scroll = true;
-        self.history.prevent_merge();
         cx.notify();
     }
 
@@ -407,6 +407,7 @@ impl TextFieldState {
 
     pub(super) fn undo(&mut self, _: &Undo, window: &mut Window, cx: &mut Context<Self>) {
         self.ignore_history = true;
+
         if let Some(change) = self.history.undo() {
             self.replace_text_in_range(
                 Some(TextOps::range_to_utf16(&self.value, &change.range())),
@@ -807,17 +808,15 @@ impl TextFieldState {
         new_text: &str,
         cx: &mut Context<Self>,
     ) -> Option<(String, String, Range<usize>)> {
-        println!("Preparing to replace text: '{}'", new_text);
-        println!("utf16 range: {:?}", range_utf16);
         let range = range_utf16
             .as_ref()
             .map(|range_utf16| TextOps::range_from_utf16(&self.value, range_utf16))
             .or(self.marked_range.clone())
             .unwrap_or(self.selected_range.clone());
-        println!("range: {:?}", range);
 
         let new_text = if let Some(max_length) = self.max_length
             && !new_text.is_empty()
+            && !self.ignore_history
         {
             let total_len = self.value.grapheme_indices(true).count();
             let range_len = self.value[range.clone()].grapheme_indices(true).count();
