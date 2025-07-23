@@ -5,7 +5,6 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub const CURSOR_WIDTH: f32 = 1.0;
 const MARKED_TEXT_UNDERLINE_THICKNESS: f32 = 1.0;
-const SELECTION_COLOR: u32 = 0x3390FF80;
 
 /// A text field element that renders editable text with cursor and selection support.
 ///
@@ -219,7 +218,7 @@ impl Element for TextElement {
                             bounds.bottom(),
                         ),
                     ),
-                    rgba(SELECTION_COLOR),
+                    state.selection_color,
                 )),
                 None,
             )

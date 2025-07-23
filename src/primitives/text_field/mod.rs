@@ -35,6 +35,7 @@ pub fn text_field(id: impl Into<ElementId>) -> TextField {
         on_change: None,
         placeholder: None,
         placeholder_color: None,
+        selection_color: None,
         masked: false,
         mask: None,
         max_length: None,
@@ -52,6 +53,7 @@ pub struct TextField {
     on_change: Option<Box<dyn Fn(&ChangeEvent, &mut Window, &mut App) + 'static>>,
     placeholder: Option<SharedString>,
     placeholder_color: Option<Hsla>,
+    selection_color: Option<Hsla>,
     masked: bool,
     mask: Option<SharedString>,
     max_length: Option<usize>,
@@ -87,6 +89,11 @@ impl TextField {
 
     pub fn placeholder_color(mut self, color: impl Into<Hsla>) -> Self {
         self.placeholder_color = Some(color.into());
+        self
+    }
+
+    pub fn selection_color(mut self, color: impl Into<Hsla>) -> Self {
+        self.selection_color = Some(color.into());
         self
     }
 
@@ -150,6 +157,7 @@ impl RenderOnce for TextField {
             state.on_change = self.on_change;
             state.set_placeholder(self.placeholder);
             state.set_placeholder_color(self.placeholder_color);
+            state.set_selection_color(self.selection_color);
             state.set_masked(self.masked);
             state.set_mask(self.mask);
             state.max_length = self.max_length;

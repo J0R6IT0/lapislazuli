@@ -14,6 +14,10 @@ use gpui::*;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
+const DEFAULT_PLACEHOLDER_COLOR: u32 = 0x80808080;
+const DEFAULT_MASK: &str = "•";
+const DEFAULT_SELECTION_COLOR: u32 = 0x3390FF80;
+
 /// State management for text field components
 ///
 /// Handles text editing, cursor positioning, selection, and scrolling
@@ -24,6 +28,7 @@ pub struct TextFieldState {
     pub(super) emitted_value: SharedString,
     pub(super) placeholder: SharedString,
     pub(super) placeholder_color: Hsla,
+    pub(super) selection_color: Hsla,
     pub(super) selected_range: Range<usize>,
     pub(super) selection_reversed: bool,
     pub(super) marked_range: Option<Range<usize>>,
@@ -75,7 +80,8 @@ impl TextFieldState {
             value: SharedString::new(""),
             emitted_value: SharedString::new(""),
             placeholder: SharedString::new(""),
-            placeholder_color: hsla(0., 0., 0.5, 0.5),
+            placeholder_color: rgba(DEFAULT_PLACEHOLDER_COLOR).into(),
+            selection_color: rgba(DEFAULT_SELECTION_COLOR).into(),
             selected_range: 0..0,
             selection_reversed: false,
             marked_range: None,
@@ -85,7 +91,7 @@ impl TextFieldState {
             scroll_handle: ScrollHandle::new(),
             should_auto_scroll: false,
             masked: false,
-            mask: SharedString::new("•"),
+            mask: SharedString::new(DEFAULT_MASK),
             on_input: None,
             on_change: None,
             max_length: None,
@@ -111,7 +117,16 @@ impl TextFieldState {
         if let Some(color) = color {
             self.placeholder_color = color.into();
         } else {
-            self.placeholder_color = hsla(0., 0., 0.5, 0.5);
+            self.placeholder_color = rgba(DEFAULT_PLACEHOLDER_COLOR).into();
+        }
+    }
+
+    /// Set the selection color
+    pub fn set_selection_color(&mut self, color: Option<impl Into<Hsla>>) {
+        if let Some(color) = color {
+            self.selection_color = color.into();
+        } else {
+            self.selection_color = rgba(DEFAULT_SELECTION_COLOR).into();
         }
     }
 
@@ -147,7 +162,7 @@ impl TextFieldState {
                 }
             }
         } else {
-            self.mask = SharedString::new("•");
+            self.mask = SharedString::new(DEFAULT_MASK);
         }
     }
 
