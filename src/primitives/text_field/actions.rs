@@ -1,62 +1,78 @@
 use super::CONTEXT;
-use gpui::{App, KeyBinding, actions};
+use gpui::{Action, App, KeyBinding, actions};
 
 /// Initialize text field key bindings and actions
 pub fn init(app: &mut App) {
     app.bind_keys([
-        KeyBinding::new("left", Left, Some(CONTEXT)),
-        KeyBinding::new("right", Right, Some(CONTEXT)),
-        KeyBinding::new("home", Home, Some(CONTEXT)),
-        KeyBinding::new("end", End, Some(CONTEXT)),
-        KeyBinding::new("alt-left", WordLeft, Some(CONTEXT)),
-        KeyBinding::new("alt-right", WordRight, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("ctrl-a", Home, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("cmd-left", Home, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("ctrl-e", End, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("cmd-right", End, Some(CONTEXT)),
-        KeyBinding::new("shift-left", SelectLeft, Some(CONTEXT)),
-        KeyBinding::new("shift-right", SelectRight, Some(CONTEXT)),
-        KeyBinding::new("cmd-a", SelectAll, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-a", SelectAll, Some(CONTEXT)),
-        KeyBinding::new("alt-shift-left", SelectWordLeft, Some(CONTEXT)),
-        KeyBinding::new("alt-shift-right", SelectWordRight, Some(CONTEXT)),
-        KeyBinding::new("shift-home", SelectToHome, Some(CONTEXT)),
-        KeyBinding::new("shift-end", SelectToEnd, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("cmd-shift-left", SelectToHome, Some(CONTEXT)),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("cmd-shift-right", SelectToEnd, Some(CONTEXT)),
-        KeyBinding::new("backspace", Backspace, Some(CONTEXT)),
-        KeyBinding::new("delete", Delete, Some(CONTEXT)),
-        KeyBinding::new("alt-backspace", DeleteWordLeft, Some(CONTEXT)),
-        KeyBinding::new("alt-delete", DeleteWordRight, Some(CONTEXT)),
-        KeyBinding::new("cmd-backspace", DeleteToBeginning, Some(CONTEXT)),
-        KeyBinding::new("cmd-delete", DeleteToEnd, Some(CONTEXT)),
-        KeyBinding::new("cmd-c", Copy, Some(CONTEXT)),
-        KeyBinding::new("cmd-v", Paste, Some(CONTEXT)),
-        KeyBinding::new("cmd-x", Cut, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-c", Copy, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-v", Paste, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-x", Cut, Some(CONTEXT)),
-        KeyBinding::new("ctrl-cmd-space", ShowCharacterPalette, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-z", Undo, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-y", Redo, Some(CONTEXT)),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-shift-z", Redo, Some(CONTEXT)),
-        KeyBinding::new("cmd-z", Undo, Some(CONTEXT)),
-        KeyBinding::new("cmd-shift-z", Redo, Some(CONTEXT)),
-        KeyBinding::new("enter", Enter, Some(CONTEXT)),
+        key_binding("left", Left),
+        key_binding("right", Right),
+        key_binding("home", Home),
+        key_binding("end", End),
+        key_binding("shift-left", SelectLeft),
+        key_binding("shift-right", SelectRight),
+        key_binding("backspace", Backspace),
+        key_binding("delete", Delete),
+        key_binding("enter", Enter),
     ]);
+
+    #[cfg(target_os = "macos")]
+    macos_bindings(app);
+    #[cfg(not(target_os = "macos"))]
+    windows_linux_bindings(app);
+}
+
+#[cfg(not(target_os = "macos"))]
+fn windows_linux_bindings(app: &mut App) {
+    app.bind_keys([
+        key_binding("ctrl-left", WordLeft),
+        key_binding("ctrl-right", WordRight),
+        key_binding("ctrl-a", SelectAll),
+        key_binding("ctrl-shift-left", SelectWordLeft),
+        key_binding("ctrl-shift-right", SelectWordRight),
+        key_binding("shift-home", SelectToHome),
+        key_binding("shift-end", SelectToEnd),
+        key_binding("ctrl-backspace", DeleteWordLeft),
+        key_binding("ctrl-delete", DeleteWordRight),
+        key_binding("ctrl-c", Copy),
+        key_binding("ctrl-v", Paste),
+        key_binding("ctrl-x", Cut),
+        key_binding("ctrl-z", Undo),
+        key_binding("ctrl-y", Redo),
+        key_binding("ctrl-shift-z", Redo),
+    ]);
+}
+
+#[cfg(target_os = "macos")]
+fn macos_bindings(app: &mut App) {
+    app.bind_keys([
+        key_binding("ctrl-b", Left),
+        key_binding("ctrl-f", Right),
+        key_binding("alt-left", WordLeft),
+        key_binding("alt-right", WordRight),
+        key_binding("ctrl-a", Home),
+        key_binding("cmd-left", Home),
+        key_binding("ctrl-e", End),
+        key_binding("cmd-right", End),
+        key_binding("cmd-a", SelectAll),
+        key_binding("alt-shift-left", SelectWordLeft),
+        key_binding("alt-shift-right", SelectWordRight),
+        key_binding("cmd-shift-left", SelectToHome),
+        key_binding("cmd-shift-right", SelectToEnd),
+        key_binding("alt-backspace", DeleteWordLeft),
+        key_binding("alt-delete", DeleteWordRight),
+        key_binding("cmd-backspace", DeleteToBeginning),
+        key_binding("cmd-delete", DeleteToEnd),
+        key_binding("cmd-c", Copy),
+        key_binding("cmd-v", Paste),
+        key_binding("cmd-x", Cut),
+        key_binding("ctrl-cmd-space", ShowCharacterPalette),
+        key_binding("cmd-z", Undo),
+        key_binding("cmd-shift-z", Redo),
+    ]);
+}
+
+fn key_binding(keystrokes: &str, action: impl Action) -> KeyBinding {
+    KeyBinding::new(keystrokes, action, Some(CONTEXT))
 }
 
 actions!(

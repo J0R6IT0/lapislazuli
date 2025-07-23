@@ -491,6 +491,7 @@ impl TextFieldState {
             let word_start = TextOps::previous_word_boundary(&self.value, cursor_pos);
             self.selected_range = word_start..cursor_pos;
         }
+        self.history.prevent_merge();
         self.replace_text_in_range(None, "", window, cx);
     }
 
@@ -1038,9 +1039,6 @@ impl Validatable for TextFieldState {
         true
     }
 }
-
-impl EventEmitter<InputEvent> for TextFieldState {}
-impl EventEmitter<ChangeEvent> for TextFieldState {}
 
 impl Render for TextFieldState {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
