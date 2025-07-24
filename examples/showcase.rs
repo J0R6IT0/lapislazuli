@@ -570,7 +570,7 @@ impl Render for Showcase {
                                     .placeholder("Search...")
                                     .placeholder_color(rgb(0x9ca3af))
                                     .mask("😎")
-                                    .max_length(10)
+                                    .max_length(30)
                                     .validator(|v| v.contains("apple"))
                                     .disabled(self.disabled)
                                     .border_color(rgb(0xd1d5db))

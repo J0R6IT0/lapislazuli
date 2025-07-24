@@ -30,7 +30,7 @@ pub fn text_field(id: impl Into<ElementId>) -> TextField {
         id: id.clone(),
         base: h_flex_center().id(id).cursor(CursorStyle::IBeam),
         disabled: false,
-        value: SharedString::new(""),
+        value: None,
         on_input: None,
         on_change: None,
         placeholder: None,
@@ -48,7 +48,7 @@ pub struct TextField {
     id: ElementId,
     base: Stateful<Div>,
     disabled: bool,
-    value: SharedString,
+    value: Option<SharedString>,
     on_input: Option<Box<dyn Fn(&InputEvent, &mut Window, &mut App) + 'static>>,
     on_change: Option<Box<dyn Fn(&ChangeEvent, &mut Window, &mut App) + 'static>>,
     placeholder: Option<SharedString>,
@@ -62,7 +62,7 @@ pub struct TextField {
 
 impl TextField {
     pub fn value(mut self, value: impl Into<SharedString>) -> Self {
-        self.value = value.into();
+        self.value = Some(value.into());
         self
     }
 

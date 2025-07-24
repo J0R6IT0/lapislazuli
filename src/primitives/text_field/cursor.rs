@@ -36,7 +36,6 @@ impl Cursor {
         self.epoch = 0;
         self.visible = false;
         self.paused = false;
-        cx.notify();
     }
 
     fn next_epoch(&mut self) -> usize {

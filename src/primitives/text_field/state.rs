@@ -11,7 +11,10 @@ use crate::{
     },
 };
 use gpui::*;
-use std::ops::Range;
+use std::{
+    ops::Range,
+    time::{Duration, Instant},
+};
 use unicode_segmentation::UnicodeSegmentation;
 
 const DEFAULT_PLACEHOLDER_COLOR: u32 = 0x80808080;
@@ -46,7 +49,8 @@ pub struct TextFieldState {
     pub(super) validator: Option<Box<dyn Fn(SharedString) -> bool>>,
     history: History,
     ignore_history: bool,
-    _subscriptions: Vec<Subscription>,
+    focus_select: bool,
+    _subscriptions: [Subscription; 4],
 }
 
 impl TextFieldState {
@@ -59,8 +63,12 @@ impl TextFieldState {
         let cursor = cx.new(|_| Cursor::new());
         let focus_handle = cx.focus_handle().tab_stop(true);
 
-        let _subscriptions = vec![
-            cx.observe(&cursor, |_, _, cx| cx.notify()),
+        let _subscriptions = [
+            cx.observe(&cursor, |state, _, cx| {
+                if !state.selecting {
+                    cx.notify();
+                }
+            }),
             cx.observe_window_activation(window, |state, window, cx| {
                 if window.is_window_active() {
                     let focus_handle = state.focus_handle.clone();
@@ -98,6 +106,7 @@ impl TextFieldState {
             validator: None,
             history: History::new(),
             ignore_history: false,
+            focus_select: true,
             cursor,
             _subscriptions,
         }
@@ -131,12 +140,14 @@ impl TextFieldState {
     }
 
     /// Set the value of the text field
-    pub fn set_value(&mut self, value: impl Into<SharedString>) {
-        let value = value.into();
-        if value != self.value {
-            self.value = value;
-            self.emitted_value = self.value.clone();
-            self.history.clear();
+    pub fn set_value(&mut self, value: Option<impl Into<SharedString>>) {
+        if let Some(value) = value {
+            let value = value.into();
+            if value != self.value {
+                self.value = value;
+                self.emitted_value = self.value.clone();
+                self.history.clear();
+            }
         }
     }
 
@@ -167,16 +178,31 @@ impl TextFieldState {
     }
 
     fn on_focus(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.focus_select {
+            self.selected_range = 0..self.value.len();
+            cx.notify();
+        }
         self.cursor.update(cx, |cursor, cx| {
             cursor.start(cx);
         });
+        self.focus_select = true;
     }
 
     fn on_blur(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.history.prevent_merge();
+        if !self.focus_handle.is_focused(window) {
+            self.selected_range = 0..0;
+            self.history.prevent_merge();
+        }
         self.cursor.update(cx, |cursor, cx| {
             cursor.stop(cx);
         });
+        // TODO - for some reason cx.notify() doesn't trigger a re-render here
+        cx.spawn(async |this, cx| {
+            if let Some(this) = this.upgrade() {
+                this.update(cx, |this, cx| cx.notify());
+            }
+        })
+        .detach();
         self.on_change(window, cx);
     }
 
@@ -555,6 +581,7 @@ impl TextFieldState {
         cx: &mut Context<Self>,
     ) {
         self.selecting = true;
+        self.focus_select = false;
 
         // Handle multi-click selection
         if event.click_count > 1 {
