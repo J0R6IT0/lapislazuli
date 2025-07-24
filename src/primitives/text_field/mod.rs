@@ -40,6 +40,8 @@ pub fn text_field(id: impl Into<ElementId>) -> TextField {
         mask: None,
         max_length: None,
         validator: None,
+        tab_index: 0,
+        tab_stop: true,
     }
 }
 
@@ -58,6 +60,8 @@ pub struct TextField {
     mask: Option<SharedString>,
     max_length: Option<usize>,
     validator: Option<Box<dyn Fn(SharedString) -> bool + 'static>>,
+    tab_index: isize,
+    tab_stop: bool,
 }
 
 impl TextField {
@@ -116,6 +120,16 @@ impl TextField {
         self.validator = Some(Box::new(validator));
         self
     }
+
+    pub fn tab_stop(mut self, tab_stop: bool) -> Self {
+        self.tab_stop = tab_stop;
+        self
+    }
+
+    pub fn tab_index(mut self, tab_index: isize) -> Self {
+        self.tab_index = tab_index;
+        self
+    }
 }
 
 impl Styled for TextField {
@@ -151,6 +165,14 @@ impl RenderOnce for TextField {
             })
             .update(app, |state, _| state.clone());
 
+        let mut focus_handle = state.focus_handle(app);
+        if focus_handle.tab_stop != self.tab_stop {
+            focus_handle = focus_handle.tab_stop(self.tab_stop);
+        }
+        if focus_handle.tab_index != self.tab_index {
+            focus_handle = focus_handle.tab_index(self.tab_index);
+        }
+
         state.update(app, |state, _cx| {
             state.set_value(self.value);
             state.on_input = self.on_input;
@@ -167,7 +189,7 @@ impl RenderOnce for TextField {
         self.base
             .when(!self.disabled, |this| {
                 this.key_context(CONTEXT)
-                    .track_focus(&state.focus_handle(app))
+                    .track_focus(&focus_handle)
                     .on_action(window.listener_for(&state, TextFieldState::backspace))
                     .on_action(window.listener_for(&state, TextFieldState::delete))
                     .on_action(window.listener_for(&state, TextFieldState::left))
