@@ -1,4 +1,4 @@
-use crate::primitives::text_field;
+use crate::primitives::init;
 use gpui::{
     AnyView, App, AppContext, Context, Entity, InteractiveElement, IntoElement, KeyBinding,
     ParentElement, Render, Styled, Window, actions, div,
@@ -12,8 +12,7 @@ pub struct LapislazuliProvider {
 
 impl LapislazuliProvider {
     pub fn new(view: impl Into<AnyView>, _window: &mut Window, app: &mut App) -> Entity<Self> {
-        text_field::init(app);
-
+        init(app);
         app.bind_keys([
             KeyBinding::new("tab", Tab, None),
             KeyBinding::new("shift-tab", TabPrev, None),

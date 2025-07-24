@@ -1,9 +1,8 @@
 use crate::{AutoFocusable, Disableable};
 use gpui::{
     AnyElement, App, ClickEvent, Div, ElementId, InteractiveElement, Interactivity, IntoElement,
-    Modifiers, MouseButton, MouseDownEvent, MouseUpEvent, ParentElement, Point, RenderOnce,
-    Stateful, StatefulInteractiveElement, StyleRefinement, Styled, Window, div,
-    prelude::FluentBuilder,
+    ParentElement, RenderOnce, Stateful, StatefulInteractiveElement, StyleRefinement, Styled,
+    Window, div, prelude::FluentBuilder,
 };
 use smallvec::SmallVec;
 use std::rc::Rc;
@@ -17,6 +16,8 @@ pub fn button(id: impl Into<ElementId>) -> Button {
         children: SmallVec::new(),
         on_click: None,
         auto_focus: false,
+        tab_index: 0,
+        tab_stop: true,
     }
 }
 
@@ -27,8 +28,10 @@ pub struct Button {
     base: Stateful<Div>,
     disabled: bool,
     children: SmallVec<[AnyElement; 2]>,
-    on_click: Option<Rc<Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>>,
+    on_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
     auto_focus: bool,
+    tab_index: isize,
+    tab_stop: bool,
 }
 
 impl Button {
@@ -36,7 +39,17 @@ impl Button {
         mut self,
         on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     ) -> Self {
-        self.on_click = Some(Rc::new(Box::new(on_click)));
+        self.on_click = Some(Rc::new(on_click));
+        self
+    }
+
+    pub fn tab_stop(mut self, tab_stop: bool) -> Self {
+        self.tab_stop = tab_stop;
+        self
+    }
+
+    pub fn tab_index(mut self, tab_index: isize) -> Self {
+        self.tab_index = tab_index;
         self
     }
 }
@@ -81,50 +94,35 @@ impl StatefulInteractiveElement for Button {}
 
 impl RenderOnce for Button {
     fn render(self, window: &mut Window, app: &mut App) -> impl IntoElement {
-        let focus_handle = window.use_keyed_state(self.id, app, |window, app| {
-            let focus_handle = app.focus_handle().tab_stop(true);
-            if self.auto_focus {
-                focus_handle.focus(window);
-            }
-            focus_handle
-        });
+        let mut focus_handle = window
+            .use_keyed_state(self.id, app, |window, app| {
+                let focus_handle = app.focus_handle();
+                if self.auto_focus {
+                    focus_handle.focus(window);
+                }
+                focus_handle
+            })
+            .read(app)
+            .clone();
+
+        if focus_handle.tab_stop != self.tab_stop {
+            focus_handle = focus_handle.tab_stop(self.tab_stop);
+        }
+
+        if focus_handle.tab_index != self.tab_index {
+            focus_handle = focus_handle.tab_index(self.tab_index);
+        }
 
         self.base
             .when_some(
                 self.on_click.filter(|_| !self.disabled),
                 |this, on_click| {
                     let on_click_clone = on_click.clone();
-                    this.track_focus(focus_handle.read(app))
-                        .on_mouse_down(MouseButton::Left, move |_, window, app| {
-                            window.prevent_default();
-                            focus_handle.update(app, |focus_handle, _| {
-                                if !focus_handle.is_focused(window) {
-                                    focus_handle.focus(window);
-                                }
-                            });
-                        })
+                    this.track_focus(&focus_handle)
                         .on_click(move |event, window, app| (on_click)(event, window, app))
                         .on_key_up(move |event, window, app| {
                             if event.keystroke.key == "space" || event.keystroke.key == "enter" {
-                                (on_click_clone)(
-                                    &ClickEvent {
-                                        down: MouseDownEvent {
-                                            button: MouseButton::Left,
-                                            position: Point::default(),
-                                            modifiers: Modifiers::none(),
-                                            click_count: 0,
-                                            first_mouse: false,
-                                        },
-                                        up: MouseUpEvent {
-                                            button: MouseButton::Left,
-                                            position: Point::default(),
-                                            modifiers: event.keystroke.modifiers,
-                                            click_count: 0,
-                                        },
-                                    },
-                                    window,
-                                    app,
-                                );
+                                (on_click_clone)(&ClickEvent::default(), window, app);
                             }
                         })
                 },

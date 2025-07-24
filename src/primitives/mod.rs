@@ -1,12 +1,16 @@
 use gpui::{
-    Div, InteractiveElement, ParentElement, SharedString, Stateful, StatefulInteractiveElement,
-    Styled, div,
+    App, Div, InteractiveElement, ParentElement, SharedString, Stateful,
+    StatefulInteractiveElement, Styled, div,
 };
 
 mod button;
 pub mod text_field;
 
 pub use button::*;
+
+pub(super) fn init(app: &mut App) {
+    text_field::init(app);
+}
 
 /// Shorthand for creating a vertical flex `Div` element.
 pub fn v_flex() -> Div {

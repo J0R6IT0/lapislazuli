@@ -18,7 +18,7 @@ mod state;
 mod tests;
 mod text_ops;
 
-pub(crate) use actions::init;
+pub(super) use actions::init;
 pub use events::*;
 
 /// Context identifier for text field key bindings
