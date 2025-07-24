@@ -32,7 +32,7 @@ impl Cursor {
     }
 
     /// Stop the blinking
-    pub fn stop(&mut self, cx: &mut Context<Self>) {
+    pub fn stop(&mut self) {
         self.epoch = 0;
         self.visible = false;
         self.paused = false;

@@ -556,7 +556,7 @@ impl Render for Showcase {
                             .p(rems(2.0))
                             .gap(rems(1.0))
                             .child(
-                                span("Interactive text input with search icon")
+                                span("Interactive text input.")
                                     .text_color(rgb(0x64748b))
                                     .text_size(rems(0.95))
                             )

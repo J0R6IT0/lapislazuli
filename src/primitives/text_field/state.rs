@@ -11,10 +11,7 @@ use crate::{
     },
 };
 use gpui::*;
-use std::{
-    ops::Range,
-    time::{Duration, Instant},
-};
+use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
 const DEFAULT_PLACEHOLDER_COLOR: u32 = 0x80808080;
@@ -193,13 +190,13 @@ impl TextFieldState {
             self.selected_range = 0..0;
             self.history.prevent_merge();
         }
-        self.cursor.update(cx, |cursor, cx| {
-            cursor.stop(cx);
+        self.cursor.update(cx, |cursor, _| {
+            cursor.stop();
         });
         // TODO - for some reason cx.notify() doesn't trigger a re-render here
         cx.spawn(async |this, cx| {
             if let Some(this) = this.upgrade() {
-                this.update(cx, |this, cx| cx.notify());
+                this.update(cx, |_, cx| cx.notify()).ok();
             }
         })
         .detach();
