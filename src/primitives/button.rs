@@ -117,14 +117,24 @@ impl RenderOnce for Button {
             .when_some(
                 self.on_click.filter(|_| !self.disabled),
                 |this, on_click| {
-                    let on_click_clone = on_click.clone();
                     this.track_focus(&focus_handle)
-                        .on_click(move |event, window, app| (on_click)(event, window, app))
-                        .on_key_up(move |event, window, app| {
-                            if event.keystroke.key == "space" || event.keystroke.key == "enter" {
-                                (on_click_clone)(&ClickEvent::default(), window, app);
-                            }
+                        .map(|this| {
+                            let on_click = on_click.clone();
+                            this.on_key_up(move |event, window, app| {
+                                if event.keystroke.key == "space" {
+                                    (on_click)(&ClickEvent::default(), window, app);
+                                }
+                            })
                         })
+                        .map(|this| {
+                            let on_click = on_click.clone();
+                            this.on_key_down(move |event, window, app| {
+                                if event.keystroke.key == "enter" {
+                                    (on_click)(&ClickEvent::default(), window, app);
+                                }
+                            })
+                        })
+                        .on_click(move |event, window, app| (on_click)(event, window, app))
                 },
             )
             .children(self.children)
