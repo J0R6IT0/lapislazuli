@@ -163,7 +163,8 @@ impl RenderOnce for TextField {
             .use_keyed_state(self.id, app, |window, app| {
                 app.new(|cx| TextFieldState::new(window, cx))
             })
-            .update(app, |state, _| state.clone());
+            .read(app)
+            .clone();
 
         let mut focus_handle = state.focus_handle(app);
         if focus_handle.tab_stop != self.tab_stop {
@@ -211,7 +212,7 @@ impl RenderOnce for TextField {
                     .on_action(window.listener_for(&state, TextFieldState::word_right))
                     .on_action(window.listener_for(&state, TextFieldState::select_word_left))
                     .on_action(window.listener_for(&state, TextFieldState::select_word_right))
-                    .on_action(window.listener_for(&state, TextFieldState::select_to_home))
+                    .on_action(window.listener_for(&state, TextFieldState::select_to_beginning))
                     .on_action(window.listener_for(&state, TextFieldState::select_to_end))
                     .on_action(window.listener_for(&state, TextFieldState::undo))
                     .on_action(window.listener_for(&state, TextFieldState::redo))

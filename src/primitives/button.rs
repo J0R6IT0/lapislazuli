@@ -108,7 +108,6 @@ impl RenderOnce for Button {
         if focus_handle.tab_stop != self.tab_stop {
             focus_handle = focus_handle.tab_stop(self.tab_stop);
         }
-
         if focus_handle.tab_index != self.tab_index {
             focus_handle = focus_handle.tab_index(self.tab_index);
         }
