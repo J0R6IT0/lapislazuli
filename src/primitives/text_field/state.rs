@@ -82,9 +82,9 @@ impl TextFieldState {
 
         Self {
             focus_handle,
-            value: SharedString::new(""),
-            emitted_value: SharedString::new(""),
-            placeholder: SharedString::new(""),
+            value: SharedString::default(),
+            emitted_value: SharedString::default(),
+            placeholder: SharedString::default(),
             placeholder_color: rgba(DEFAULT_PLACEHOLDER_COLOR).into(),
             selection_color: rgba(DEFAULT_SELECTION_COLOR).into(),
             selected_range: 0..0,
@@ -114,7 +114,7 @@ impl TextFieldState {
         if let Some(placeholder) = placeholder {
             self.placeholder = placeholder.into();
         } else {
-            self.placeholder = SharedString::new("");
+            self.placeholder = SharedString::default();
         }
     }
 
