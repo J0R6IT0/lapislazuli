@@ -19,19 +19,21 @@ pub struct TextOps;
 impl TextOps {
     /// Get the previous grapheme boundary from the given offset
     pub fn previous_boundary(text: &str, offset: usize) -> usize {
-        let graphemes = text.grapheme_indices(true);
-        let mut prev_offset = 0;
-        for (i, _) in graphemes {
-            if i >= offset {
-                break;
-            }
-            prev_offset = i;
+        if offset == 0 {
+            return 0;
         }
-        prev_offset
+        text.grapheme_indices(true)
+            .take_while(|(i, _)| *i < offset)
+            .map(|(i, _)| i)
+            .last()
+            .unwrap_or(0)
     }
 
     /// Get the next grapheme boundary from the given offset
     pub fn next_boundary(text: &str, offset: usize) -> usize {
+        if offset >= text.len() {
+            return text.len();
+        }
         text.grapheme_indices(true)
             .find(|(i, _)| *i > offset)
             .map(|(i, _)| i)
