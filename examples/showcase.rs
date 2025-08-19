@@ -6,12 +6,12 @@ use gpui::{
 use lapislazuli::{
     AutoFocusable, Disableable, LapislazuliProvider, ParentElementWithContext,
     components::{
-        Checkbox, Switch,
+        Switch,
         progress::{Progress, ProgressFill, ProgressTrack},
         tabs::{Tabs, TabsTrigger},
     },
     primitives::{
-        a, button, h_flex, span,
+        a, button, checkbox, h_flex, span,
         text_field::{InputEvent, text_field},
         v_flex,
     },
@@ -379,15 +379,23 @@ impl Render for Showcase {
                                         h_flex()
                                             .gap(rems(0.5))
                                             .items_center()
-                                            .child(Checkbox::new("checkbox")
+                                            .child(checkbox("checkbox")
                                                         .rounded_md()
                                                         .checked(self.disabled)
-                                                        .on_change(cx.listener(Self::set_disabled))
+                                                        .on_change(cx.listener(|showcase, event:&lapislazuli::primitives::ChangeEvent, window, cx| {
+                                                            showcase.set_disabled(&event.checked, window, cx);
+                                                        }))
                                                         .border_1()
                                                         .border_color(rgb(0xe2e8f0))
-                                                        .indicator(span("✓").text_color(rgb(0xffffff)).text_xs())
+                                                        .overflow_hidden()
+                                                        .focus(|this| this.border_color(rgb(0x000000)))
+                                                        .checked_indicator(span("✓")                                                .flex()
+                                                                            .justify_center()
+                                                                            .items_center()
+                                                                            .rounded_md()
+                                                                            .size_full().text_color(rgb(0xffffff)).text_xs().bg(rgb(0x6366f1)))
                                                         .size(rems(1.5))
-                                                        .when_checked(|this| this.bg(rgb(0x6366f1)))
+                                                        //.when_checked(|this| this.bg(rgb(0x6366f1)))
                                             )
                                             .child(Switch::new("switch")
                                                 .rounded_3xl()

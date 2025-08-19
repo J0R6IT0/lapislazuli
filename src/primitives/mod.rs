@@ -4,9 +4,11 @@ use gpui::{
 };
 
 mod button;
+mod checkbox;
 pub mod text_field;
 
 pub use button::*;
+pub use checkbox::*;
 
 pub(super) fn init(app: &mut App) {
     text_field::init(app);

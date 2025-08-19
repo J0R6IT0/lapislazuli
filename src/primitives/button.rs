@@ -113,11 +113,10 @@ impl RenderOnce for Button {
         }
 
         self.base
-            .when_some(
-                self.on_click.filter(|_| !self.disabled),
-                |this, on_click| {
-                    this.track_focus(&focus_handle)
-                        .map(|this| {
+            .when(!self.disabled, |this| {
+                this.track_focus(&focus_handle)
+                    .when_some(self.on_click, |this, on_click| {
+                        this.map(|this| {
                             let on_click = on_click.clone();
                             this.on_key_up(move |event, window, app| {
                                 if event.keystroke.key == "space" {
@@ -134,8 +133,8 @@ impl RenderOnce for Button {
                             })
                         })
                         .on_click(move |event, window, app| (on_click)(event, window, app))
-                },
-            )
+                    })
+            })
             .children(self.children)
     }
 }
